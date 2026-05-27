@@ -1,0 +1,15 @@
+<a href="{% url 'beauty_salon:service_detail' service.id %}" class="text-decoration-none text-dark">
+  <div class="card service-card h-100 border-0 shadow-sm">
+    {% if service.image %}
+    <img src="{{ service.image.url }}" class="card-img-top" alt="{{ service.name }}">
+    {% endif %}
+    <div class="card-body">
+      <h5 class="card-title">{{ service.name }}</h5>
+      <p class="card-text text-muted">{{ service.description|truncatechars:120 }}</p>
+      <div class="d-flex justify-content-between align-items-center">
+        <span class="price">{{ service.price }} ₽</span>
+        <span class="btn btn-sm btn-outline-dark">Подробнее</span>
+      </div>
+    </div>
+  </div>
+</a>

@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+<!-- test -->
+{% block title %}{{ master.full_name }}{% endblock %}
+
+{% block content %}
+<section class="py-5">
+  <div class="container">
+    <div class="row g-4">
+      <div class="col-lg-4">
+        <div class="card shadow-sm border-0">
+          {% if master.photo %}
+            <img src="{{ master.photo.url }}" class="card-img-top" alt="{{ master.full_name }}" style="object-fit: cover; max-height: 350px;">
+          {% else %}
+            <div class="bg-light d-flex align-items-center justify-content-center" style="height: 350px;">
+              <span class="text-muted">Фото нет</span>
+            </div>
+          {% endif %}
+          <div class="card-body">
+            <h1 class="h4 mb-3">{{ master.full_name }}</h1>
+            <p class="text-muted mb-2">{{ master.email }}</p>
+            <p class="mb-2"><strong>Телефон:</strong> {{ master.phone }}</p>
+
+            {% if master.role %}
+              <p class="mb-3"><strong>Роль:</strong> {{ master.role.name }}</p>
+            {% endif %}
+
+            <a href="{% url 'beauty_salon:appointment_create' %}?master={{ master.id }}" class="btn btn-dark mt-2">
+              Записаться к мастеру
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-8">
+        <h2 class="h4 mb-3">Услуги мастера</h2>
+        <div class="row g-4">
+          {% for service in services %}
+            <div class="col-12 col-md-6">
+              {% include 'components/service_card.html' with service=service %}
+            </div>
+          {% empty %}
+            <div class="col-12">
+              <p class="text-muted">У мастера пока нет привязанных услуг.</p>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

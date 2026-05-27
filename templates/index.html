@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Главная{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="container">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-6">
+        <p class="subtitle">Салон красоты</p>
+        <h1>Уход, стиль и красота в одном месте</h1>
+        <p class="lead">
+          Премиальные услуги для волос, лица и тела. Индивидуальный подход, мастера и удобная запись.
+        </p>
+        <div class="d-flex gap-3 mt-4">
+          <a href="{% url 'beauty_salon:services_list' %}" class="btn btn-dark btn-lg">Смотреть услуги</a>
+          <a href="{% url 'beauty_salon:appointments_list' %}" class="btn btn-outline-dark btn-lg">Записаться</a>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="hero-image">
+          <img src="{% static 'img/hero.jpg' %}" class="img-fluid rounded-4 shadow" alt="Beauty Salon">
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="py-5">
+  <div class="container">
+    <div class="row g-4">
+      <div class="col-md-4">
+        <div class="info-card">
+          <h3>{{ stats.total_users }}</h3>
+          <p>Клиентов и сотрудников</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="info-card">
+          <h3>{{ stats.total_appointments }}</h3>
+          <p>Всего записей</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="info-card">
+          <h3>{{ stats.today_appointments }}</h3>
+          <p>Записей на сегодня</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="py-5 bg-light">
+  <div class="container">
+    <div class="section-title">
+      <p class="subtitle">Популярные услуги</p>
+      <h2>Выберите подходящую процедуру</h2>
+    </div>
+
+    <div class="row g-4 mt-3">
+      {% for service in services %}
+      <div class="col-12 col-md-6 col-lg-4">
+        {% include 'components/service_card.html' with service=service %}
+      </div>
+      {% empty %}
+      <div class="col-12">
+        <p class="text-muted">Пока нет услуг.</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

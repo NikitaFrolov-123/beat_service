@@ -1,0 +1,92 @@
+{% load notifications_tags %}
+
+<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+  <div class="container">
+    <a class="navbar-brand fw-bold" href="{% url 'beauty_salon:index' %}">Beauty Salon</a>
+
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Переключить навигацию">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'beauty_salon:index' %}">Главная</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'beauty_salon:services_list' %}">Услуги</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'beauty_salon:masters_list' %}">Мастера</a>
+        </li>
+
+        {% if request.session.user_id %}
+          {% if request.session.user_role == 'client' %}
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'beauty_salon:appointment_create' %}">Записаться</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'beauty_salon:my_appointments' %}">Мои записи</a>
+            </li>
+          {% elif request.session.user_role == 'master' %}
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'beauty_salon:appointments_list' %}">Мои записи</a>
+            </li>
+          {% elif request.session.user_role == 'admin' %}
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'beauty_salon:users_list' %}">Пользователи</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'beauty_salon:appointments_list' %}">Записи</a>
+            </li>
+          {% endif %}
+        {% endif %}
+      </ul>
+
+      <ul class="navbar-nav ms-auto align-items-lg-center">
+        {% if request.session.user_id %}
+          <li class="nav-item">
+            <a class="nav-link position-relative" href="{% url 'beauty_salon:notifications_list' %}">
+              Уведомления
+              {% unread_notifications_count as unread_count %}
+              {% if unread_count > 0 %}
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                  {{ unread_count }}
+                  <span class="visually-hidden">непрочитанные уведомления</span>
+                </span>
+              {% endif %}
+            </a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'accounts:profile' %}">Профиль</a>
+          </li>
+
+          <li class="nav-item">
+            {% with parts=request.session.user_name.split %}
+              <span class="nav-link text-muted text-nowrap">
+                Привет,
+                {% if parts|length > 1 %}
+                  {{ parts.0 }}{% for part in parts|slice:"1:" %} {{ part.0 }}.{% endfor %}
+                {% else %}
+                  {{ request.session.user_name }}
+                {% endif %}
+              </span>
+            {% endwith %}
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'accounts:logout' %}">Выйти</a>
+          </li>
+        {% else %}
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'accounts:login' %}">Войти</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'accounts:register' %}">Регистрация</a>
+          </li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+</nav>

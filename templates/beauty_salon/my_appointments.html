@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-5">
+    <h2 class="mb-4">Мои записи</h2>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    {% if appointments %}
+        <div class="table-responsive">
+            <table class="table table-striped align-middle">
+                <thead>
+                    <tr>
+                        <th>Дата</th>
+                        <th>Время</th>
+                        <th>Мастер</th>
+                        <th>Услуга</th>
+                        <th>Статус</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for appointment in appointments %}
+                    <tr>
+                        <td>{{ appointment.start_datetime|date:"d.m.Y" }}</td>
+                        <td>{{ appointment.start_datetime|time:"H:i" }} - {{ appointment.end_datetime|time:"H:i" }}</td>
+                        <td>{{ appointment.master.full_name }}</td>
+                        <td>
+                            {% for service in appointment.services.all %}
+                                {{ service.name }}{% if not forloop.last %}, {% endif %}
+                            {% endfor %}
+                        </td>
+                        <td>
+                            {% if appointment.status == 'new' %}
+                                Новая
+                            {% elif appointment.status == 'confirmed' %}
+                                Подтверждена
+                            {% elif appointment.status == 'cancelled' %}
+                                Отменена
+                            {% elif appointment.status == 'done' %}
+                                Завершена
+                            {% else %}
+                                {{ appointment.status }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if appointment.can_cancel %}
+                                <form method="post" action="{% url 'beauty_salon:appointment_cancel' appointment.pk %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-warning">
+                                        Отменить
+                                    </button>
+                                </form>
+
+                                <form method="post" action="{% url 'beauty_salon:appointment_delete' appointment.pk %}" class="d-inline ms-1">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-danger">
+                                        Удалить
+                                    </button>
+                                </form>
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-info">У вас пока нет записей.</div>
+    {% endif %}
+</div>
+{% endblock %}

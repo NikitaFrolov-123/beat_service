@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block title %}Мастера{% endblock %}
+
+{% block content %}
+<section class="py-5">
+  <div class="container">
+    <div class="section-title mb-4">
+      <p class="subtitle">Мастера</p>
+      <h1>Наши специалисты</h1>
+    </div>
+
+    <div class="row g-4">
+      {% for master in masters %}
+      <div class="col-12 col-md-6 col-lg-4">
+        <div class="card h-100 shadow-sm border-0">
+          {% if master.photo %}
+            <img src="{{ master.photo.url }}" class="card-img-top" alt="{{ master.full_name }}" style="object-fit: cover; height: 280px;">
+          {% else %}
+            <div class="bg-light d-flex align-items-center justify-content-center" style="height: 280px;">
+              <span class="text-muted">Фото нет</span>
+            </div>
+          {% endif %}
+
+          <div class="card-body">
+            <h5 class="card-title">{{ master.full_name }}</h5>
+            <p class="text-muted mb-2">{{ master.email }}</p>
+            <p class="mb-2"><strong>Записей:</strong> {{ master.appointments_count }}</p>
+            <p class="mb-3"><strong>Рейтинг:</strong> {{ master.avg_rating|default:"—" }}</p>
+            <a href="{% url 'beauty_salon:master_detail' master.id %}" class="btn btn-dark">Подробнее</a>
+          </div>
+        </div>
+      </div>
+      {% empty %}
+      <div class="col-12">
+        <p class="text-muted">Мастеров пока нет.</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

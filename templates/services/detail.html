@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ service.name }}{% endblock %}
+
+{% block content %}
+<section class="py-5">
+  <div class="container">
+    <div class="row g-4">
+      <div class="col-lg-6">
+        <div class="card border-0 shadow-sm overflow-hidden">
+          {% if service.image %}
+            <img src="{{ service.image.url }}" class="img-fluid" alt="{{ service.name }}">
+          {% else %}
+            <div class="bg-light d-flex align-items-center justify-content-center" style="height: 380px;">
+              <span class="text-muted">Фото отсутствует</span>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="service-detail">
+          <p class="subtitle mb-2">Услуга</p>
+          <h1 class="mb-3">{{ service.name }}</h1>
+
+          <p class="lead">{{ service.description }}</p>
+
+          <div class="price-large mb-4">{{ service.price }} ₽</div>
+
+          <p class="mb-1"><strong>Длительность:</strong> {{ service.duration_minutes }} мин.</p>
+          <p class="mb-4"><strong>Категория:</strong> {{ service.category.name }}</p>
+
+          <h2 class="h5 mb-3">Мастера этой услуги</h2>
+          <div class="d-flex flex-wrap gap-2 mb-4">
+            {% for master in masters %}
+              <a href="{% url 'beauty_salon:master_detail' master.id %}" class="btn btn-outline-dark btn-sm">
+                {{ master.full_name }}
+              </a>
+            {% empty %}
+              <span class="text-muted">Пока нет назначенных мастеров</span>
+            {% endfor %}
+          </div>
+
+          <a href="{% url 'beauty_salon:appointment_create' %}?service={{ service.id }}" class="btn btn-dark btn-lg">
+            Записаться на услугу
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

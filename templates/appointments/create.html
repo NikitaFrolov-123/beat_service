@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+
+{% block title %}Запись{% endblock %}
+
+{% block content %}
+<section class="py-5">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-10">
+        <div class="d-flex align-items-center justify-content-between mb-4">
+          <div>
+            <h1 class="mb-1">Запись на услугу</h1>
+            <p class="text-muted mb-0">Выберите услугу, мастера и удобное время</p>
+          </div>
+        </div>
+
+        {% if not request.session.user_id %}
+          <div class="alert alert-warning">
+            Чтобы записаться, нужно войти в аккаунт.
+          </div>
+        {% endif %}
+
+        <div class="card shadow-sm border-0 mb-4">
+          <div class="card-body">
+            <form method="get" id="filter-form">
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label class="form-label">Услуга</label>
+                  <select name="service" id="id_service" class="form-select" onchange="resetDependentFields(); this.form.submit();" required>
+                    <option value="">Выберите услугу</option>
+                    {% for service in services %}
+                      <option value="{{ service.id }}" {% if selected_service|stringformat:"s" == service.id|stringformat:"s" %}selected{% endif %}>
+                        {{ service.name }}
+                      </option>
+                    {% endfor %}
+                  </select>
+                </div>
+
+                <div class="col-md-4">
+                  <label class="form-label">Мастер</label>
+                  <select name="master" id="id_master" class="form-select" onchange="this.form.submit();" required {% if not selected_service %}disabled{% endif %}>
+                    <option value="">Выберите мастера</option>
+                    {% for master in masters %}
+                      <option value="{{ master.id }}" {% if selected_master|stringformat:"s" == master.id|stringformat:"s" %}selected{% endif %}>
+                        {{ master.full_name }}
+                      </option>
+                    {% endfor %}
+                  </select>
+                </div>
+
+                <div class="col-md-4">
+                  <label class="form-label">Дата</label>
+                  <input type="date" name="date" id="id_date" class="form-control" value="{{ selected_date|default:'' }}" onchange="this.form.submit()" required {% if not selected_master %}disabled{% endif %}>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        {% if selected_service and selected_master and selected_date %}
+          <div class="card shadow-sm border-0">
+            <div class="card-body">
+              <div class="row g-4 mb-4">
+                <div class="col-md-4">
+                  <div class="p-3 bg-light rounded">
+                    <div class="text-muted small">Услуга</div>
+                    <div class="fw-semibold">
+                      {% for service in services %}
+                        {% if selected_service|stringformat:"s" == service.id|stringformat:"s" %}
+                          {{ service.name }}
+                        {% endif %}
+                      {% endfor %}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-4">
+                  <div class="p-3 bg-light rounded">
+                    <div class="text-muted small">Мастер</div>
+                    <div class="fw-semibold">
+                      {% for master in masters %}
+                        {% if selected_master|stringformat:"s" == master.id|stringformat:"s" %}
+                          {{ master.full_name }}
+                        {% endif %}
+                      {% endfor %}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-4">
+                  <div class="p-3 bg-light rounded">
+                    <div class="text-muted small">Дата</div>
+                    <div class="fw-semibold">{{ selected_date }}</div>
+                  </div>
+                </div>
+              </div>
+
+              <form method="post">
+                {% csrf_token %}
+
+                <input type="hidden" name="service_id" value="{{ selected_service }}">
+                <input type="hidden" name="master_id" value="{{ selected_master }}">
+                <input type="hidden" name="date" value="{{ selected_date }}">
+
+                <div class="mb-3">
+                  <label class="form-label">Свободное время</label>
+                  <select name="slot_time" class="form-select" required {% if not free_slots %}disabled{% endif %}>
+                    <option value="">Выберите время</option>
+                    {% for slot in free_slots %}
+                      <option value="{{ slot }}">{{ slot }}</option>
+                    {% empty %}
+                      <option value="">Нет свободного времени</option>
+                    {% endfor %}
+                  </select>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Комментарий</label>
+                  <textarea name="notes" class="form-control" rows="4" placeholder="Например: укрепление без снятия"></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-dark" {% if not request.session.user_id or not free_slots %}disabled{% endif %}>
+                  Создать запись
+                </button>
+              </form>
+            </div>
+          </div>
+        {% else %}
+          <div class="alert alert-info">
+            Выберите услугу, мастера и дату, чтобы увидеть свободные слоты.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  function resetDependentFields() {
+    const master = document.getElementById('id_master');
+    const date = document.getElementById('id_date');
+    if (master) {
+      master.value = '';
+      master.disabled = true;
+    }
+    if (date) {
+      date.value = '';
+      date.disabled = true;
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const service = document.getElementById('id_service');
+    const master = document.getElementById('id_master');
+    const date = document.getElementById('id_date');
+
+    if (service && service.value) {
+      if (master) master.disabled = false;
+    }
+    if (master && master.value) {
+      if (date) date.disabled = false;
+    }
+  });
+</script>
+{% endblock %}

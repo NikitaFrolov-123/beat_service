@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block title %}Услуги{% endblock %}
+
+{% block content %}
+<section class="py-5">
+  <div class="container">
+    <div class="section-title mb-4">
+      <p class="subtitle">Услуги</p>
+      <h1>Категории и услуги</h1>
+    </div>
+
+    <div class="mb-4 d-flex flex-wrap gap-2">
+      <a href="{% url 'beauty_salon:services_list' %}"
+         class="btn {% if not current_category %}btn-dark{% else %}btn-outline-dark{% endif %}">
+        Все
+      </a>
+
+      {% for category in categories %}
+      <a href="?category={{ category.id }}"
+         class="btn {% if current_category and current_category.id == category.id %}btn-dark{% else %}btn-outline-dark{% endif %}">
+        {{ category.name }}
+      </a>
+      {% endfor %}
+    </div>
+
+    <div class="row g-4">
+      {% for service in services %}
+      <div class="col-12 col-md-6 col-lg-4">
+        {% include 'components/service_card.html' with service=service %}
+      </div>
+      {% empty %}
+      <div class="col-12">
+        <p class="text-muted">В этой категории пока нет услуг.</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}
