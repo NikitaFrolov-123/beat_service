@@ -24,9 +24,11 @@
               <p class="mb-3"><strong>Роль:</strong> {{ master.role.name }}</p>
             {% endif %}
 
-            <a href="{% url 'beauty_salon:appointment_create' %}?master={{ master.id }}" class="btn btn-dark mt-2">
-              Записаться к мастеру
-            </a>
+            {% if request.session.user_role != 'master' %}
+              <a href="{% url 'beauty_salon:appointment_create' %}?master={{ master.id }}" class="btn btn-dark mt-2">
+                Записаться к мастеру
+              </a>
+            {% endif %}
           </div>
         </div>
       </div>

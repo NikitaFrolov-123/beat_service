@@ -29,4 +29,8 @@ urlpatterns = [
     path('masters/<int:user_id>/', views.master_detail, name='master_detail'),
 
     path('notifications/', views.notifications_list, name='notifications_list'),
+
+    path('master/schedule/', views.master_schedule, name='master_schedule'),
+    path('master/appointment/<int:pk>/complete/', views.appointment_complete, name='appointment_complete'),
+    path('master/appointment/<int:pk>/cancel/', views.appointment_cancel_by_master, name='appointment_cancel_by_master'),
 ]

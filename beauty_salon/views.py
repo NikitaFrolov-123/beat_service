@@ -1,14 +1,15 @@
 from datetime import datetime, timedelta, time
+from functools import wraps
 
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q, Count, Avg
+from django.http import HttpResponseForbidden
 from django.shortcuts import render, get_object_or_404, redirect
+from django.utils import timezone
 from django.views.decorators.http import require_http_methods
+
 from .models import Notification
-from django.contrib.auth.decorators import login_required
-
-
 from .models import (
     Role, User, ServiceCategory, Service, Appointment, AppointmentService,
 )
@@ -257,7 +258,6 @@ def get_free_slots(master, service_duration, selected_date):
 
     return slots
 
-from django.utils import timezone
 
 @require_http_methods(["GET"])
 def my_appointments_view(request):
@@ -284,7 +284,6 @@ def my_appointments_view(request):
         'appointments': appointments,
     })
 
-from django.utils import timezone
 
 @require_http_methods(["GET", "POST"])
 def appointment_create(request):
@@ -508,6 +507,7 @@ def master_detail(request, user_id):
         'services': services,
     })
 
+
 def notifications_list(request):
     user_id = request.session.get('user_id')
     if not user_id:
@@ -520,3 +520,86 @@ def notifications_list(request):
     return render(request, 'notifications/list.html', {
         'notifications': notifications
     })
+
+
+def master_required(view_func):
+    @wraps(view_func)
+    def _wrapped(request, *args, **kwargs):
+        user_id = request.session.get('user_id')
+        user_role = request.session.get('user_role')
+
+        if not user_id:
+            messages.error(request, 'Нужно войти в аккаунт')
+            return redirect('accounts:login')
+
+        if user_role != 'master':
+            return HttpResponseForbidden('Доступ только для мастера')
+
+        return view_func(request, *args, **kwargs)
+    return _wrapped
+
+
+@master_required
+def master_schedule(request):
+    master = get_object_or_404(User, pk=request.session.get('user_id'), role__name='master')
+
+    appointments = (
+        Appointment.objects
+        .filter(master=master, start_datetime__date__gte=timezone.localdate())
+        .select_related('client', 'master')
+        .prefetch_related('services')
+        .order_by('start_datetime')
+    )
+
+    return render(request, 'masters/schedule.html', {
+        'appointments': appointments,
+        'master': master,
+    })
+
+
+@master_required
+@require_http_methods(["POST"])
+def appointment_complete(request, pk):
+    master = get_object_or_404(User, pk=request.session.get('user_id'), role__name='master')
+    appointment = get_object_or_404(Appointment, pk=pk, master=master)
+
+    if appointment.status == 'cancelled':
+        messages.error(request, 'Нельзя завершить отменённую запись')
+        return redirect('beauty_salon:master_schedule')
+
+    if appointment.status == 'completed':
+        messages.info(request, 'Запись уже завершена')
+        return redirect('beauty_salon:master_schedule')
+
+    appointment.status = 'completed'
+    appointment.notes = request.POST.get('notes', appointment.notes or '')
+    appointment.save()
+
+    messages.success(request, 'Услуга отмечена как выполненная')
+    return redirect('beauty_salon:master_schedule')
+
+
+@master_required
+@require_http_methods(["POST"])
+def appointment_cancel_by_master(request, pk):
+    master = get_object_or_404(User, pk=request.session.get('user_id'), role__name='master')
+    appointment = get_object_or_404(Appointment, pk=pk, master=master)
+
+    if appointment.status == 'cancelled':
+        messages.info(request, 'Запись уже отменена')
+        return redirect('beauty_salon:master_schedule')
+
+    reason = request.POST.get('reason', '').strip()
+
+    appointment.status = 'cancelled'
+    if reason:
+        appointment.notes = (appointment.notes or '') + f'\n[Отмена мастером] {reason}'
+    appointment.save()
+
+    Notification.objects.create(
+        recipient=appointment.client,
+        text=f'Ваша запись на {appointment.start_datetime:%d.%m.%Y %H:%M} отменена мастером. Причина: {reason or "не указана"}.'
+    )
+
+    messages.success(request, 'Запись отменена')
+    return redirect('beauty_salon:master_schedule')

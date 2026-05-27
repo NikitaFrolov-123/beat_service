@@ -30,7 +30,7 @@
             </li>
           {% elif request.session.user_role == 'master' %}
             <li class="nav-item">
-              <a class="nav-link" href="{% url 'beauty_salon:appointments_list' %}">Мои записи</a>
+              <a class="nav-link" href="{% url 'beauty_salon:master_schedule' %}">Мое расписание</a>
             </li>
           {% elif request.session.user_role == 'admin' %}
             <li class="nav-item">

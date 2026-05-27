@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}Мое расписание{% endblock %}
+
+{% block content %}
+<section class="py-5">
+  <div class="container">
+    <div class="mb-4">
+      <p class="subtitle">Кабинет мастера</p>
+      <h1>Мое расписание</h1>
+      <p class="text-muted mb-0">Здесь отображаются только ваши записи.</p>
+    </div>
+
+    <div class="row g-4">
+      {% for appointment in appointments %}
+      <div class="col-12">
+        <div class="card shadow-sm border-0">
+          <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between gap-3 mb-3">
+              <div>
+                <h5 class="card-title mb-1">{{ appointment.start_datetime|date:"d.m.Y H:i" }}</h5>
+                <p class="mb-0 text-muted">Клиент: {{ appointment.client.full_name }}</p>
+              </div>
+              <div>
+                <span class="badge bg-secondary">{{ appointment.status }}</span>
+              </div>
+            </div>
+
+            <p class="mb-2">
+              <strong>Услуга:</strong>
+              {% for service in appointment.services.all %}
+                {{ service.name }}{% if not forloop.last %}, {% endif %}
+              {% endfor %}
+            </p>
+
+            {% if appointment.notes %}
+              <p class="mb-3"><strong>Комментарий:</strong> {{ appointment.notes }}</p>
+            {% endif %}
+
+            <div class="d-flex flex-wrap gap-2">
+              <form method="post" action="{% url 'beauty_salon:appointment_complete' appointment.pk %}">
+                {% csrf_token %}
+                <input type="text" name="notes" class="form-control mb-2" placeholder="Комментарий о процедуре">
+                <button type="submit" class="btn btn-success btn-sm">Отметить выполненной</button>
+              </form>
+
+              <form method="post" action="{% url 'beauty_salon:appointment_cancel_by_master' appointment.pk %}">
+                {% csrf_token %}
+                <input type="text" name="reason" class="form-control mb-2" placeholder="Причина отмены">
+                <button type="submit" class="btn btn-danger btn-sm">Отменить запись</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% empty %}
+      <div class="col-12">
+        <p class="text-muted">Записей пока нет.</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

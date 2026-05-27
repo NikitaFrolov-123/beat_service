@@ -41,9 +41,11 @@
             {% endfor %}
           </div>
 
-          <a href="{% url 'beauty_salon:appointment_create' %}?service={{ service.id }}" class="btn btn-dark btn-lg">
-            Записаться на услугу
-          </a>
+          {% if request.session.user_role != 'master' %}
+            <a href="{% url 'beauty_salon:appointment_create' %}?service={{ service.id }}" class="btn btn-dark btn-lg">
+              Записаться на услугу
+            </a>
+          {% endif %}
         </div>
       </div>
     </div>
