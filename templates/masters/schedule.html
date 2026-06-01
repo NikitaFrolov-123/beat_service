@@ -5,60 +5,215 @@
 {% block content %}
 <section class="py-5">
   <div class="container">
-    <div class="mb-4">
-      <p class="subtitle">Кабинет мастера</p>
-      <h1>Мое расписание</h1>
-      <p class="text-muted mb-0">Здесь отображаются только ваши записи.</p>
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+      <div>
+        <p class="subtitle mb-1">Кабинет мастера</p>
+        <h1 class="mb-1">Мое расписание</h1>
+        <p class="text-muted mb-0">Все ваши будущие записи в одном месте.</p>
+      </div>
+      <div class="text-muted">
+        <strong>{{ appointments|length }}</strong> записей
+      </div>
     </div>
 
     <div class="row g-4">
       {% for appointment in appointments %}
       <div class="col-12">
-        <div class="card shadow-sm border-0">
-          <div class="card-body">
-            <div class="d-flex flex-wrap justify-content-between gap-3 mb-3">
-              <div>
-                <h5 class="card-title mb-1">{{ appointment.start_datetime|date:"d.m.Y H:i" }}</h5>
-                <p class="mb-0 text-muted">Клиент: {{ appointment.client.full_name }}</p>
+        <div class="card border-0 shadow-sm overflow-hidden">
+          <div class="card-body p-0">
+            <div class="p-4 border-start border-4
+              {% if appointment.status == 'new' %}border-warning
+              {% elif appointment.status == 'completed' %}border-success
+              {% elif appointment.status == 'cancelled' %}border-danger
+              {% else %}border-secondary{% endif %}">
+
+              <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+                <div>
+                  <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <h5 class="mb-0">{{ appointment.start_datetime|date:"d.m.Y" }}</h5>
+                    <span class="badge rounded-pill text-bg-light">
+                      {{ appointment.start_datetime|date:"H:i" }} — {{ appointment.end_datetime|date:"H:i" }}
+                    </span>
+
+                    {% if appointment.status == 'new' %}
+                      <span class="badge rounded-pill bg-warning text-dark">Новая</span>
+                    {% elif appointment.status == 'completed' %}
+                      <span class="badge rounded-pill bg-success">Завершена</span>
+                    {% elif appointment.status == 'cancelled' %}
+                      <span class="badge rounded-pill bg-danger">Отменена</span>
+                    {% else %}
+                      <span class="badge rounded-pill bg-secondary">{{ appointment.status }}</span>
+                    {% endif %}
+                  </div>
+
+                  <div class="d-flex flex-wrap gap-4 text-muted small">
+                    <span><strong class="text-dark">Клиент:</strong> {{ appointment.client.full_name }}</span>
+                    <span><strong class="text-dark">Телефон:</strong> {{ appointment.client.phone }}</span>
+                  </div>
+                </div>
+
+                <div class="text-end">
+                  <div class="text-muted small text-uppercase mb-1">Статус записи</div>
+                  <div class="fw-semibold">{{ appointment.get_status_display }}</div>
+                </div>
               </div>
-              <div>
-                <span class="badge bg-secondary">{{ appointment.status }}</span>
+
+              <div class="row g-3">
+                <div class="col-lg-8">
+                  <div class="bg-light rounded-4 p-3 h-100">
+                    <div class="text-muted small text-uppercase mb-2">Услуга</div>
+                    <div class="fw-semibold mb-3">
+                      {% for service in appointment.services.all %}
+                        {{ service.name }}{% if not forloop.last %}, {% endif %}
+                      {% endfor %}
+                    </div>
+
+                    {% if appointment.notes %}
+                      <div class="text-muted small text-uppercase mb-2">Комментарий</div>
+                      <div class="text-body">{{ appointment.notes }}</div>
+                    {% else %}
+                      <div class="text-muted fst-italic">Комментарий отсутствует</div>
+                    {% endif %}
+                  </div>
+                </div>
+
+                <div class="col-lg-4">
+                  <div class="bg-light rounded-4 p-3 h-100 d-flex flex-column justify-content-between">
+                    <div>
+                      <div class="text-muted small text-uppercase mb-2">Действия</div>
+                      {% if appointment.status == 'new' %}
+                        <p class="small text-muted mb-0">
+                          Вы можете отметить запись как выполненную или отменить её.
+                        </p>
+                      {% elif appointment.status == 'completed' %}
+                        <p class="small text-muted mb-0">
+                          Эта запись уже завершена.
+                        </p>
+                      {% elif appointment.status == 'cancelled' %}
+                        <p class="small text-muted mb-0">
+                          Эта запись отменена.
+                        </p>
+                      {% endif %}
+                    </div>
+
+                    {% if appointment.status == 'new' %}
+                      <div class="d-grid gap-2 mt-3">
+                        <button
+                          type="button"
+                          class="btn btn-success"
+                          data-start="{{ appointment.start_datetime|date:'c' }}"
+                          onclick="handleCompleteClick(this, event, 'completeModal-{{ appointment.pk }}')">
+                          Отметить выполненной
+                        </button>
+
+                        <button
+                          type="button"
+                          class="btn btn-outline-danger"
+                          data-bs-toggle="modal"
+                          data-bs-target="#cancelModal-{{ appointment.pk }}">
+                          Отменить запись
+                        </button>
+                      </div>
+                    {% elif appointment.status == 'completed' %}
+                      <div class="d-grid gap-2 mt-3">
+                        <a href="{% url 'beauty_salon:appointment_receipt' appointment.pk %}" class="btn btn-outline-primary">
+                          Открыть чек
+                        </a>
+                      </div>
+                    {% endif %}
+                  </div>
+                </div>
               </div>
-            </div>
-
-            <p class="mb-2">
-              <strong>Услуга:</strong>
-              {% for service in appointment.services.all %}
-                {{ service.name }}{% if not forloop.last %}, {% endif %}
-              {% endfor %}
-            </p>
-
-            {% if appointment.notes %}
-              <p class="mb-3"><strong>Комментарий:</strong> {{ appointment.notes }}</p>
-            {% endif %}
-
-            <div class="d-flex flex-wrap gap-2">
-              <form method="post" action="{% url 'beauty_salon:appointment_complete' appointment.pk %}">
-                {% csrf_token %}
-                <input type="text" name="notes" class="form-control mb-2" placeholder="Комментарий о процедуре">
-                <button type="submit" class="btn btn-success btn-sm">Отметить выполненной</button>
-              </form>
-
-              <form method="post" action="{% url 'beauty_salon:appointment_cancel_by_master' appointment.pk %}">
-                {% csrf_token %}
-                <input type="text" name="reason" class="form-control mb-2" placeholder="Причина отмены">
-                <button type="submit" class="btn btn-danger btn-sm">Отменить запись</button>
-              </form>
             </div>
           </div>
         </div>
       </div>
+
+      <div class="modal fade" id="completeModal-{{ appointment.pk }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+              <h5 class="modal-title">Подтвердить выполнение</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+
+            <form method="post" action="{% url 'beauty_salon:appointment_complete' appointment.pk %}">
+              {% csrf_token %}
+              <div class="modal-body">
+                <p class="mb-3">
+                  Отметить запись <strong>{{ appointment.client.full_name }}</strong>
+                  на <strong>{{ appointment.start_datetime|date:"d.m.Y H:i" }}</strong> как выполненную?
+                </p>
+                <div class="mb-3">
+                  <label class="form-label">Комментарий о процедуре</label>
+                  <textarea name="notes" class="form-control" rows="4" placeholder="Что было сделано, результат, рекомендации..."></textarea>
+                </div>
+              </div>
+
+              <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="submit" class="btn btn-success">Да, завершить</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal fade" id="cancelModal-{{ appointment.pk }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+              <h5 class="modal-title">Отмена записи</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+
+            <form method="post" action="{% url 'beauty_salon:appointment_cancel_by_master' appointment.pk %}">
+              {% csrf_token %}
+              <div class="modal-body">
+                <p class="mb-3">
+                  Укажите причину отмены записи для <strong>{{ appointment.client.full_name }}</strong>
+                  на <strong>{{ appointment.start_datetime|date:"d.m.Y H:i" }}</strong>.
+                </p>
+                <div class="mb-3">
+                  <label class="form-label">Причина отмены</label>
+                  <textarea name="reason" class="form-control" rows="4" placeholder="Например: клиент не пришёл, форс-мажор, перенос..."></textarea>
+                </div>
+              </div>
+
+              <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Назад</button>
+                <button type="submit" class="btn btn-danger">Отменить запись</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
       {% empty %}
       <div class="col-12">
-        <p class="text-muted">Записей пока нет.</p>
+        <div class="alert alert-light border shadow-sm mb-0">
+          Записей пока нет.
+        </div>
       </div>
       {% endfor %}
     </div>
   </div>
 </section>
+
+<script>
+  function handleCompleteClick(btn, event, modalId) {
+    const startDate = new Date(btn.dataset.start);
+    const now = new Date();
+
+    if (startDate > now) {
+      event.preventDefault();
+      alert('На данный момент это сделать нельзя');
+      return;
+    }
+
+    const modalEl = document.getElementById(modalId);
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+  }
+</script>
 {% endblock %}

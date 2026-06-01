@@ -33,4 +33,8 @@ urlpatterns = [
     path('master/schedule/', views.master_schedule, name='master_schedule'),
     path('master/appointment/<int:pk>/complete/', views.appointment_complete, name='appointment_complete'),
     path('master/appointment/<int:pk>/cancel/', views.appointment_cancel_by_master, name='appointment_cancel_by_master'),
+    path('master/appointments/<int:pk>/receipt/', views.appointment_receipt, name='appointment_receipt'),
+    path('appointments/<int:appointment_id>/review/', views.review_create, name='review_create'),
+    path('reviews/salon/create/', views.review_create_salon, name='review_create_salon')
+
 ]

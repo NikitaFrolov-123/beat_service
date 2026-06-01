@@ -14,6 +14,17 @@
   {% include 'partials/header.html' %}
   {% include 'partials/navbar.html' %}
 
+  {% if messages %}
+    <div class="container mt-3">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show mb-3" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Закрыть"></button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
   <main class="flex-grow-1">
     {% block content %}{% endblock %}
   </main>

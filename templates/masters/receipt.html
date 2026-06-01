@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block title %}Чек по услуге{% endblock %}
+
+{% block content %}
+<section class="py-5">
+  <div class="container">
+    <div class="card border-0 shadow-sm mx-auto" style="max-width: 800px;">
+      <div class="card-body p-4 p-md-5">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+          <div>
+            <p class="text-muted mb-1">Beauty Salon</p>
+            <h2 class="mb-0">Чек по услуге</h2>
+          </div>
+          <span class="badge bg-success fs-6">Завершено</span>
+        </div>
+
+        <div class="row g-3 mb-4">
+          <div class="col-md-6">
+            <div class="bg-light rounded-4 p-3 h-100">
+              <div class="text-muted small text-uppercase mb-2">Клиент</div>
+              <div class="fw-semibold">{{ appointment.client.full_name }}</div>
+              <div>{{ appointment.client.phone }}</div>
+              <div>{{ appointment.client.email }}</div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="bg-light rounded-4 p-3 h-100">
+              <div class="text-muted small text-uppercase mb-2">Мастер</div>
+              <div class="fw-semibold">{{ appointment.master.full_name }}</div>
+              <div>{{ appointment.master.phone }}</div>
+              <div>{{ appointment.master.email }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-light rounded-4 p-3 mb-4">
+          <div class="text-muted small text-uppercase mb-2">Данные записи</div>
+          <p class="mb-1"><strong>Дата:</strong> {{ appointment.start_datetime|date:"d.m.Y" }}</p>
+          <p class="mb-1"><strong>Время:</strong> {{ appointment.start_datetime|date:"H:i" }} — {{ appointment.end_datetime|date:"H:i" }}</p>
+          <p class="mb-1"><strong>Статус:</strong> {{ appointment.get_status_display }}</p>
+          <p class="mb-1">
+            <strong>Услуги:</strong>
+            {% for service in appointment.services.all %}
+              {{ service.name }}{% if not forloop.last %}, {% endif %}
+            {% endfor %}
+          </p>
+          <p class="mb-0"><strong>Сумма:</strong> {{ total_price }} ₽</p>
+        </div>
+
+        {% if appointment.notes %}
+          <div class="bg-light rounded-4 p-3 mb-4">
+            <div class="text-muted small text-uppercase mb-2">Комментарий мастера</div>
+            <div>{{ appointment.notes }}</div>
+          </div>
+        {% endif %}
+
+        <div class="d-flex gap-2 flex-wrap">
+          <button class="btn btn-primary" onclick="window.print()">Печать</button>
+          <a href="{% url 'beauty_salon:master_schedule' %}" class="btn btn-outline-secondary">Назад в расписание</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

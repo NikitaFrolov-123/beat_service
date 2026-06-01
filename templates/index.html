@@ -13,9 +13,22 @@
         <p class="lead">
           Премиальные услуги для волос, лица и тела. Индивидуальный подход, мастера и удобная запись.
         </p>
-        <div class="d-flex gap-3 mt-4">
-          <a href="{% url 'beauty_salon:services_list' %}" class="btn btn-dark btn-lg">Смотреть услуги</a>
-          <a href="{% url 'beauty_salon:appointments_list' %}" class="btn btn-outline-dark btn-lg">Записаться</a>
+        <div class="d-flex gap-3 mt-4 flex-wrap">
+          {% if request.session.user_role == 'master' %}
+            <a href="{% url 'beauty_salon:master_schedule' %}" class="btn btn-dark btn-lg">
+              Мое расписание
+            </a>
+          {% else %}
+            <a href="{% url 'beauty_salon:services_list' %}" class="btn btn-dark btn-lg">
+              Смотреть услуги
+            </a>
+            <a href="{% url 'beauty_salon:appointment_create' %}" class="btn btn-outline-dark btn-lg">
+              Записаться
+            </a>
+            <a href="{% url 'beauty_salon:review_create_salon' %}" class="btn btn-outline-dark btn-lg">
+              Оставить отзыв
+            </a>
+          {% endif %}
         </div>
       </div>
       <div class="col-lg-6">
@@ -67,6 +80,96 @@
       {% empty %}
       <div class="col-12">
         <p class="text-muted">Пока нет услуг.</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="py-5">
+  <div class="container">
+    <div class="section-title mb-4">
+      <p class="subtitle">Мастера</p>
+      <h2>Наши специалисты</h2>
+    </div>
+
+    <div class="row g-4">
+      {% for master in masters %}
+      <div class="col-12 col-md-6 col-lg-4">
+        <div class="card h-100 shadow-sm border-0">
+          {% if master.photo %}
+            <img src="{{ master.photo.url }}" class="card-img-top" alt="{{ master.full_name }}" style="object-fit: cover; height: 280px;">
+          {% else %}
+            <div class="bg-light d-flex align-items-center justify-content-center" style="height: 280px;">
+              <span class="text-muted">Фото нет</span>
+            </div>
+          {% endif %}
+
+          <div class="card-body d-flex flex-column">
+            <h5 class="card-title">{{ master.full_name }}</h5>
+            <p class="text-muted mb-2">{{ master.email }}</p>
+            <p class="mb-2"><strong>Записей:</strong> {{ master.appointments_count }}</p>
+
+            <p class="mb-1">
+              <strong>Рейтинг:</strong>
+              {% if master.avg_rating %}
+                {{ master.avg_rating|floatformat:1 }} / 5
+              {% else %}
+                Нет оценок
+              {% endif %}
+            </p>
+
+            <p class="text-muted small mb-3">
+              Отзывов: {{ master.reviews_count|default:0 }}
+            </p>
+
+            <a href="{% url 'beauty_salon:master_detail' master.id %}" class="btn btn-dark mt-auto">
+              Подробнее
+            </a>
+          </div>
+        </div>
+      </div>
+      {% empty %}
+      <div class="col-12">
+        <p class="text-muted">Мастеров пока нет.</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="py-5 bg-light">
+  <div class="container">
+    <div class="section-title mb-4">
+      <p class="subtitle">Отзывы</p>
+      <h2>Что говорят о салоне</h2>
+    </div>
+
+    <div class="row g-4">
+      {% for review in salon_reviews %}
+      <div class="col-12 col-md-6 col-lg-4">
+        <div class="card h-100 shadow-sm border-0">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <strong>{{ review.client.full_name }}</strong>
+              <div class="badge bg-dark">Оценка {{ review.rating }} / 5</div>
+            </div>
+
+            <div class="text-muted small mb-3">
+              {{ review.created_at|date:"d.m.Y H:i" }}
+            </div>
+
+            {% if review.comment %}
+              <p class="mb-0">{{ review.comment }}</p>
+            {% else %}
+              <p class="mb-0 text-muted fst-italic">Без комментария</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% empty %}
+      <div class="col-12">
+        <p class="text-muted">Пока нет отзывов о салоне.</p>
       </div>
       {% endfor %}
     </div>

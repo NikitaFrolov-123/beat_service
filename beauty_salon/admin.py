@@ -135,12 +135,72 @@ class PaymentAdmin(admin.ModelAdmin):
     ordering = ('-payment_date',)
 
 
+@admin.action(description='Опубликовать выбранные отзывы')
+def approve_reviews(modeladmin, request, queryset):
+    queryset.update(status=Review.STATUS_APPROVED, is_visible=True)
+
+
+@admin.action(description='Скрыть выбранные отзывы')
+def hide_reviews(modeladmin, request, queryset):
+    queryset.update(status=Review.STATUS_HIDDEN, is_visible=False)
+
+
+@admin.action(description='Удалить выбранные отзывы')
+def delete_reviews(modeladmin, request, queryset):
+    queryset.update(status=Review.STATUS_DELETED, is_visible=False)
+
+
 @admin.register(Review)
 class ReviewAdmin(admin.ModelAdmin):
-    list_display = ('review_id', 'appointment', 'client', 'rating', 'created_at')
-    search_fields = ('comment', 'client__full_name', 'appointment__client__full_name')
-    list_filter = ('rating', 'created_at')
+    list_display = (
+        'review_id',
+        'review_type',
+        'rating',
+        'status',
+        'client',
+        'master',
+        'appointment',
+        'created_at',
+        'is_visible',
+    )
+    search_fields = (
+        'comment',
+        'client__full_name',
+        'client__email',
+        'master__full_name',
+        'appointment__appointment_id',
+    )
+    list_filter = (
+        'review_type',
+        'status',
+        'rating',
+        'created_at',
+    )
     ordering = ('-created_at',)
+    readonly_fields = ('created_at', 'is_visible')
+    actions = [approve_reviews, hide_reviews, delete_reviews]
+
+    fieldsets = (
+        (None, {
+            'fields': (
+                'review_type',
+                'rating',
+                'comment',
+                'status',
+                'client',
+                'master',
+                'appointment',
+                'created_at',
+                'is_visible',
+            )
+        }),
+    )
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('client', 'master', 'appointment')
+
+    def has_add_permission(self, request):
+        return False
 
 
 @admin.register(Product)

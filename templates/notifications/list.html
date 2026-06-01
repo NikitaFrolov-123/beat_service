@@ -1,24 +1,98 @@
 {% extends 'base.html' %}
 
-{% block title %}Уведомления{% endblock %}
-
 {% block content %}
-<div class="container py-4">
-  <h1 class="mb-4">Уведомления</h1>
-
-  {% if notifications %}
-    <div class="list-group">
-      {% for notification in notifications %}
-        <div class="list-group-item d-flex justify-content-between align-items-start {% if not notification.is_read %}bg-light{% endif %}">
-          <div class="me-3">
-            <div>{{ notification.text }}</div>
-            <small class="text-muted">{{ notification.created_at }}</small>
-          </div>
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h2 class="mb-1">Уведомления</h2>
+            <p class="text-muted mb-0">Последние сообщения и события</p>
         </div>
-      {% endfor %}
     </div>
-  {% else %}
-    <p class="text-muted">Уведомлений пока нет.</p>
-  {% endif %}
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    {% if notifications %}
+        <div class="row g-4">
+            {% for notification in notifications %}
+                <div class="col-12 col-lg-6">
+                    <div class="card h-100 shadow-sm border-0 notification-card {% if not notification.is_read %}unread{% endif %}">
+                        <div class="card-body p-4">
+                            <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="notification-icon">
+                                        <span>🔔</span>
+                                    </div>
+                                    <div>
+                                        <h5 class="mb-1">
+                                            {% if notification.url %}
+                                                <a href="{{ notification.url }}" class="text-decoration-none text-dark">
+                                                    Уведомление
+                                                </a>
+                                            {% else %}
+                                                Уведомление
+                                            {% endif %}
+                                        </h5>
+                                        <div class="text-muted small">
+                                            {{ notification.created_at|date:"d.m.Y H:i" }}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {% if not notification.is_read %}
+                                    <span class="badge bg-dark">Новое</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Прочитано</span>
+                                {% endif %}
+                            </div>
+
+                            <p class="mb-0">{{ notification.text }}</p>
+
+                            {% if notification.url %}
+                                <div class="mt-3">
+                                    <a href="{{ notification.url }}" class="btn btn-sm btn-outline-dark">
+                                        Открыть
+                                    </a>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info">У вас пока нет уведомлений.</div>
+    {% endif %}
 </div>
+
+<style>
+    .notification-card {
+        border-radius: 18px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .notification-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.08) !important;
+    }
+
+    .notification-card.unread {
+        border-left: 4px solid #212529;
+    }
+
+    .notification-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: #f8f9fa;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        flex-shrink: 0;
+    }
+</style>
 {% endblock %}

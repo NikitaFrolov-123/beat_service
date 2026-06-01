@@ -152,12 +152,65 @@ class Payment(models.Model):
 
 
 class Review(models.Model):
+    REVIEW_TYPE_MASTER = 'master'
+    REVIEW_TYPE_SALON = 'salon'
+
+    REVIEW_TYPE_CHOICES = (
+        (REVIEW_TYPE_MASTER, 'Мастер'),
+        (REVIEW_TYPE_SALON, 'Салон'),
+    )
+
+    STATUS_PENDING = 'pending'
+    STATUS_APPROVED = 'approved'
+    STATUS_HIDDEN = 'hidden'
+    STATUS_DELETED = 'deleted'
+
+    STATUS_CHOICES = (
+        (STATUS_PENDING, 'На модерации'),
+        (STATUS_APPROVED, 'Опубликован'),
+        (STATUS_HIDDEN, 'Скрыт'),
+        (STATUS_DELETED, 'Удалён'),
+    )
+
     review_id = models.AutoField(primary_key=True)
+    review_type = models.CharField(
+        max_length=20,
+        choices=REVIEW_TYPE_CHOICES,
+        default=REVIEW_TYPE_MASTER
+    )
     rating = models.PositiveSmallIntegerField()
     comment = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE, related_name='reviews', db_column='appointment_id')
-    client = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews', db_column='client_id')
+
+    appointment = models.ForeignKey(
+        Appointment,
+        on_delete=models.CASCADE,
+        related_name='reviews',
+        db_column='appointment_id',
+        blank=True,
+        null=True
+    )
+    client = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='reviews_written',
+        db_column='client_id'
+    )
+    master = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='master_reviews',
+        db_column='master_id',
+        blank=True,
+        null=True
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_PENDING
+    )
+    is_visible = models.BooleanField(default=False)
 
     class Meta:
         db_table = 'reviews'
@@ -166,6 +219,10 @@ class Review(models.Model):
 
     def __str__(self):
         return f'{self.review_id} - {self.rating}'
+
+    def save(self, *args, **kwargs):
+        self.is_visible = self.status == self.STATUS_APPROVED
+        super().save(*args, **kwargs)
 
 
 class Product(models.Model):
@@ -210,6 +267,7 @@ class Notification(models.Model):
         related_name='notifications'
     )
     text = models.CharField(max_length=255)
+    url = models.CharField(max_length=255, blank=True, null=True)
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 

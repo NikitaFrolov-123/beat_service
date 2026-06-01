@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+
+{% block title %}Оставить отзыв{% endblock %}
+
+{% block content %}
+<section class="py-5">
+  <div class="container" style="max-width: 800px;">
+    <div class="mb-4">
+      <p class="subtitle mb-1">Отзывы</p>
+      <h1 class="mb-2">Оставить отзыв о мастере</h1>
+      <p class="text-muted mb-0">
+        Запись: {{ appointment.start_datetime|date:"d.m.Y H:i" }} —
+        {{ appointment.master.full_name }}
+      </p>
+    </div>
+
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-4 p-md-5">
+        <form method="post" id="reviewForm">
+          {% csrf_token %}
+
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+              {{ form.non_field_errors }}
+            </div>
+          {% endif %}
+
+          <div class="mb-3">
+            <label class="form-label">Рейтинг</label>
+
+            <div class="star-rating" id="starRating">
+              <span class="star" data-value="1">★</span>
+              <span class="star" data-value="2">★</span>
+              <span class="star" data-value="3">★</span>
+              <span class="star" data-value="4">★</span>
+              <span class="star" data-value="5">★</span>
+            </div>
+
+            <input type="hidden" name="rating" id="ratingInput" value="{{ form.rating.value|default_if_none:'0' }}">
+
+            {% if form.rating.errors %}
+              <div class="text-danger small mt-1">{{ form.rating.errors }}</div>
+            {% endif %}
+          </div>
+
+          <div class="mb-4">
+            <label for="{{ form.comment.id_for_label }}" class="form-label">Комментарий</label>
+            {{ form.comment }}
+            {% if form.comment.errors %}
+              <div class="text-danger small mt-1">{{ form.comment.errors }}</div>
+            {% endif %}
+          </div>
+
+          <div class="d-flex gap-2 flex-wrap">
+            <button type="submit" class="btn btn-dark">Отправить на модерацию</button>
+            <a href="{% url 'beauty_salon:my_appointments' %}" class="btn btn-outline-secondary">Назад</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .star-rating {
+    display: flex;
+    gap: 6px;
+    font-size: 34px;
+    user-select: none;
+    cursor: pointer;
+    line-height: 1;
+  }
+
+  .star-rating .star {
+    color: #d6d6d6;
+    transition: color 0.2s ease, transform 0.1s ease;
+  }
+
+  .star-rating .star.active {
+    color: #f5b301;
+  }
+
+  .star-rating .star:hover {
+    transform: scale(1.08);
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const stars = document.querySelectorAll('#starRating .star');
+    const ratingInput = document.getElementById('ratingInput');
+    const starWrap = document.getElementById('starRating');
+
+    function paintStars(value) {
+      stars.forEach(star => {
+        const starValue = parseInt(star.dataset.value, 10);
+        if (starValue <= value) {
+          star.classList.add('active');
+        } else {
+          star.classList.remove('active');
+        }
+      });
+    }
+
+    const initialValue = parseInt(ratingInput.value, 10) || 0;
+    paintStars(initialValue);
+
+    stars.forEach(star => {
+      star.addEventListener('click', function () {
+        const value = parseInt(this.dataset.value, 10);
+        ratingInput.value = value;
+        paintStars(value);
+      });
+
+      star.addEventListener('mouseenter', function () {
+        paintStars(parseInt(this.dataset.value, 10));
+      });
+    });
+
+    starWrap.addEventListener('mouseleave', function () {
+      paintStars(parseInt(ratingInput.value, 10) || 0);
+    });
+  });
+</script>
+{% endblock %}

@@ -20,9 +20,18 @@
             <p class="text-muted mb-2">{{ master.email }}</p>
             <p class="mb-2"><strong>Телефон:</strong> {{ master.phone }}</p>
 
-            {% if master.role %}
-              <p class="mb-3"><strong>Роль:</strong> {{ master.role.name }}</p>
-            {% endif %}
+            <p class="mb-1">
+              <strong>Рейтинг:</strong>
+              {% if master.avg_rating %}
+                {{ master.avg_rating|floatformat:1 }} / 5
+              {% else %}
+                Нет оценок
+              {% endif %}
+            </p>
+
+            <p class="text-muted small mb-3">
+              Отзывов: {{ master.reviews_count|default:0 }}
+            </p>
 
             {% if request.session.user_role != 'master' %}
               <a href="{% url 'beauty_salon:appointment_create' %}?master={{ master.id }}" class="btn btn-dark mt-2">
@@ -34,6 +43,31 @@
       </div>
 
       <div class="col-lg-8">
+        <h2 class="h4 mb-3">Отзывы</h2>
+        <div class="d-grid gap-3 mb-5">
+          {% for review in reviews %}
+            <div class="card border-0 shadow-sm">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-3 mb-2">
+                  <div>
+                    <strong>{{ review.client.full_name }}</strong>
+                    <div class="text-muted small">{{ review.created_at|date:"d.m.Y H:i" }}</div>
+                  </div>
+                  <div class="badge bg-dark">Оценка {{ review.rating }} / 5</div>
+                </div>
+
+                {% if review.comment %}
+                  <p class="mb-0">{{ review.comment }}</p>
+                {% else %}
+                  <p class="mb-0 text-muted fst-italic">Без комментария</p>
+                {% endif %}
+              </div>
+            </div>
+          {% empty %}
+            <p class="text-muted">Пока нет отзывов.</p>
+          {% endfor %}
+        </div>
+
         <h2 class="h4 mb-3">Услуги мастера</h2>
         <div class="row g-4">
           {% for service in services %}

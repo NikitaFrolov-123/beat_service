@@ -3,15 +3,18 @@ from functools import wraps
 
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.db.models import Q, Count, Avg
+from django.db.models import Q, Count, Avg, Case, When, IntegerField
 from django.http import HttpResponseForbidden
 from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
+from .forms import ReviewForm
+from .models import Review
 
 from .models import Notification
 from .models import (
     Role, User, ServiceCategory, Service, Appointment, AppointmentService,
+    Review
 )
 
 WORK_START = 9
@@ -27,15 +30,25 @@ def index(request):
             start_datetime__date=datetime.now().date()
         ).count(),
     }
+
     recent = Appointment.objects.select_related('client', 'master').order_by('-created_at')[:5]
     services = Service.objects.select_related('category').prefetch_related('masters').filter(is_active=True)[:6]
-    masters = User.objects.filter(role__name='master')[:6]
+    masters = User.objects.filter(role__name='master').annotate(
+        avg_rating=Avg('master_reviews__rating', filter=Q(master_reviews__status='approved')),
+        reviews_count=Count('master_reviews', filter=Q(master_reviews__status='approved'))
+    )[:6]
+
+    salon_reviews = Review.objects.select_related('client').filter(
+        review_type=Review.REVIEW_TYPE_SALON,
+        status=Review.STATUS_APPROVED
+    ).order_by('-created_at')[:6]
 
     return render(request, 'index.html', {
         'stats': stats,
         'recent': recent,
         'services': services,
         'masters': masters,
+        'salon_reviews': salon_reviews,
     })
 
 
@@ -272,18 +285,18 @@ def my_appointments_view(request):
         Appointment.objects
         .filter(client=client)
         .select_related('client', 'master')
-        .prefetch_related('services')
+        .prefetch_related('services', 'reviews')
         .order_by('-start_datetime')
     )
 
     now = timezone.now()
     for appointment in appointments:
-        appointment.can_cancel = appointment.status != 'cancelled' and appointment.start_datetime > now
+        appointment.can_cancel = appointment.status != 'completed' and appointment.start_datetime > now
+        appointment.has_review = appointment.reviews.filter(review_type='master').exists()
 
     return render(request, 'beauty_salon/my_appointments.html', {
         'appointments': appointments,
     })
-
 
 @require_http_methods(["GET", "POST"])
 def appointment_create(request):
@@ -454,7 +467,7 @@ def appointment_cancel(request, pk):
         messages.error(request, 'Нельзя отменить прошедшую запись')
         return redirect('beauty_salon:my_appointments')
 
-    if appointment.status == 'cancelled':
+    if appointment.status == 'completed':
         messages.info(request, 'Запись уже отменена')
         return redirect('beauty_salon:my_appointments')
 
@@ -488,7 +501,8 @@ def masters_list(request):
         role__name='master'
     ).annotate(
         appointments_count=Count('master_appointments'),
-        avg_rating=Avg('master_appointments__reviews__rating')
+        avg_rating=Avg('master_reviews__rating', filter=Q(master_reviews__status='approved')),
+        reviews_count=Count('master_reviews', filter=Q(master_reviews__status='approved'))
     ).prefetch_related('services').order_by('full_name')
 
     return render(request, 'masters/list.html', {'masters': masters})
@@ -496,15 +510,23 @@ def masters_list(request):
 
 def master_detail(request, user_id):
     master = get_object_or_404(
-        User.objects.prefetch_related('services'),
+        User.objects.prefetch_related('services').annotate(
+            avg_rating=Avg('master_reviews__rating', filter=Q(master_reviews__status='approved')),
+            reviews_count=Count('master_reviews', filter=Q(master_reviews__status='approved'))
+        ),
         id=user_id,
         role__name='master'
     )
     services = master.services.filter(is_active=True).select_related('category')
+    reviews = Review.objects.select_related('client', 'appointment').filter(
+        master=master,
+        status='approved'
+    ).order_by('-created_at')
 
     return render(request, 'masters/detail.html', {
         'master': master,
         'services': services,
+        'reviews': reviews,
     })
 
 
@@ -548,7 +570,16 @@ def master_schedule(request):
         .filter(master=master, start_datetime__date__gte=timezone.localdate())
         .select_related('client', 'master')
         .prefetch_related('services')
-        .order_by('start_datetime')
+        .annotate(
+            status_order=Case(
+                When(status='new', then=0),
+                When(status='completed', then=1),
+                When(status='cancelled', then=2),
+                default=3,
+                output_field=IntegerField(),
+            )
+        )
+        .order_by('status_order', '-start_datetime')
     )
 
     return render(request, 'masters/schedule.html', {
@@ -563,7 +594,7 @@ def appointment_complete(request, pk):
     master = get_object_or_404(User, pk=request.session.get('user_id'), role__name='master')
     appointment = get_object_or_404(Appointment, pk=pk, master=master)
 
-    if appointment.status == 'cancelled':
+    if appointment.status == 'completed':
         messages.error(request, 'Нельзя завершить отменённую запись')
         return redirect('beauty_salon:master_schedule')
 
@@ -571,9 +602,19 @@ def appointment_complete(request, pk):
         messages.info(request, 'Запись уже завершена')
         return redirect('beauty_salon:master_schedule')
 
+    if appointment.start_datetime > timezone.now():
+        messages.error(request, 'Эту запись пока нельзя отметить как выполненную')
+        return redirect('beauty_salon:master_schedule')
+
     appointment.status = 'completed'
     appointment.notes = request.POST.get('notes', appointment.notes or '')
     appointment.save()
+
+    Notification.objects.create(
+        recipient=appointment.client,
+        text=f'Ваша услуга {appointment.start_datetime:%d.%m.%Y %H:%M} завершена. Оставьте отзыв о мастере.',
+        url=f'/appointments/{appointment.appointment_id}/review/'
+    )
 
     messages.success(request, 'Услуга отмечена как выполненная')
     return redirect('beauty_salon:master_schedule')
@@ -585,7 +626,7 @@ def appointment_cancel_by_master(request, pk):
     master = get_object_or_404(User, pk=request.session.get('user_id'), role__name='master')
     appointment = get_object_or_404(Appointment, pk=pk, master=master)
 
-    if appointment.status == 'cancelled':
+    if appointment.status == 'completed':
         messages.info(request, 'Запись уже отменена')
         return redirect('beauty_salon:master_schedule')
 
@@ -603,3 +644,94 @@ def appointment_cancel_by_master(request, pk):
 
     messages.success(request, 'Запись отменена')
     return redirect('beauty_salon:master_schedule')
+
+
+@master_required
+def appointment_receipt(request, pk):
+    master = get_object_or_404(User, pk=request.session.get('user_id'), role__name='master')
+    appointment = get_object_or_404(
+        Appointment.objects.select_related('client', 'master').prefetch_related('services'),
+        pk=pk,
+        master=master,
+        status='completed'
+    )
+
+    total_price = sum(service.price for service in appointment.services.all())
+
+    return render(request, 'masters/receipt.html', {
+        'appointment': appointment,
+        'total_price': total_price,
+    })
+
+@require_http_methods(["GET", "POST"])
+def review_create(request, appointment_id):
+    user_id = request.session.get('user_id')
+    if not user_id:
+        messages.error(request, 'Нужно войти в аккаунт')
+        return redirect('accounts:login')
+
+    client = get_object_or_404(User, pk=user_id)
+    appointment = get_object_or_404(
+        Appointment.objects.select_related('client', 'master').prefetch_related('services'),
+        pk=appointment_id,
+        client=client,
+        status='completed'
+    )
+
+    if Review.objects.filter(appointment=appointment).exists():
+        messages.info(request, 'Отзыв по этой записи уже оставлен')
+        return redirect('beauty_salon:my_appointments')
+
+    if request.method == 'POST':
+        form = ReviewForm(request.POST)
+        if form.is_valid():
+            review = form.save(commit=False)
+            review.client = client
+            review.master = appointment.master
+            review.appointment = appointment
+            review.review_type = Review.REVIEW_TYPE_MASTER
+            review.status = Review.STATUS_PENDING
+            review.save()
+
+            Notification.objects.create(
+                recipient=appointment.master,
+                text=f'Клиент {client.full_name} оставил отзыв на проверку.'
+            )
+
+            messages.success(request, 'Отзыв отправлен на модерацию')
+            return redirect('beauty_salon:my_appointments')
+    else:
+        form = ReviewForm()
+
+    return render(request, 'reviews/create.html', {
+        'form': form,
+        'appointment': appointment,
+    })
+
+@require_http_methods(["GET", "POST"])
+def review_create_salon(request):
+    user_id = request.session.get('user_id')
+    if not user_id:
+        messages.error(request, 'Нужно войти в аккаунт')
+        return redirect('accounts:login')
+
+    client = get_object_or_404(User, pk=user_id)
+
+    if request.method == 'POST':
+        form = ReviewForm(request.POST)
+        if form.is_valid():
+            review = form.save(commit=False)
+            review.client = client
+            review.review_type = Review.REVIEW_TYPE_SALON
+            review.status = Review.STATUS_PENDING
+            review.save()
+
+            messages.success(request, 'Отзыв о салоне отправлен на модерацию')
+            return redirect('beauty_salon:index')
+    else:
+        form = ReviewForm()
+
+    return render(request, 'reviews/create.html', {
+        'form': form,
+        'review_type': Review.REVIEW_TYPE_SALON,
+    })
