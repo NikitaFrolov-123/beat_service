@@ -5,9 +5,17 @@
 {% block content %}
 <section class="py-5">
   <div class="container">
-    <div class="section-title mb-4">
-      <p class="subtitle">Услуги</p>
-      <h1>Категории и услуги</h1>
+    <div class="section-title mb-4 d-flex justify-content-between align-items-start flex-wrap gap-3">
+      <div>
+        <p class="subtitle">Услуги</p>
+        <h1>Категории и услуги</h1>
+      </div>
+
+      {% if request.session.user_role == 'admin' %}
+        <a href="{% url 'beauty_salon:service_create' %}" class="btn btn-dark">
+          Добавить услугу
+        </a>
+      {% endif %}
     </div>
 
     <div class="mb-4 d-flex flex-wrap gap-2">
@@ -17,22 +25,56 @@
       </a>
 
       {% for category in categories %}
-      <a href="?category={{ category.id }}"
-         class="btn {% if current_category and current_category.id == category.id %}btn-dark{% else %}btn-outline-dark{% endif %}">
-        {{ category.name }}
-      </a>
+        <a href="?category={{ category.id }}"
+           class="btn {% if current_category and current_category.id == category.id %}btn-dark{% else %}btn-outline-dark{% endif %}">
+          {{ category.name }}
+        </a>
       {% endfor %}
     </div>
 
     <div class="row g-4">
       {% for service in services %}
-      <div class="col-12 col-md-6 col-lg-4">
-        {% include 'components/service_card.html' with service=service %}
-      </div>
+        <div class="col-12 col-md-6 col-lg-4">
+          <div class="card h-100 shadow-sm">
+            {% if service.image %}
+              <img src="{{ service.image.url }}" class="card-img-top" alt="{{ service.name }}" style="object-fit: cover; height: 200px;">
+            {% else %}
+              <div class="bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                <span class="text-muted">Фото нет</span>
+              </div>
+            {% endif %}
+
+            <div class="card-body d-flex flex-column">
+              <h5 class="card-title mb-2">{{ service.name }}</h5>
+              <p class="text-muted mb-2">{{ service.category.name }}</p>
+              <p class="card-text flex-grow-1">
+                {{ service.description|default:"Описание отсутствует" }}
+              </p>
+              <p class="mb-3">
+                <strong>{{ service.price }}</strong> ₽ · {{ service.duration_minutes }} мин.
+              </p>
+
+              <div class="d-flex flex-wrap gap-2">
+                <a href="{% url 'beauty_salon:service_detail' service.id %}" class="btn btn-sm btn-outline-dark">
+                  Подробнее
+                </a>
+
+                {% if request.session.user_role == 'admin' %}
+                  <a href="{% url 'beauty_salon:service_update' service.id %}" class="btn btn-sm btn-warning">
+                    Изменить
+                  </a>
+                  <a href="{% url 'beauty_salon:service_delete' service.id %}" class="btn btn-sm btn-danger">
+                    Удалить
+                  </a>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
       {% empty %}
-      <div class="col-12">
-        <p class="text-muted">В этой категории пока нет услуг.</p>
-      </div>
+        <div class="col-12">
+          <p class="text-muted">В этой категории пока нет услуг.</p>
+        </div>
       {% endfor %}
     </div>
   </div>

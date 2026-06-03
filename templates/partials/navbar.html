@@ -2,7 +2,7 @@
 
 <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
   <div class="container">
-    <a class="navbar-brand fw-bold" href="{% url 'beauty_salon:index' %}">Beauty Salon</a>
+    <a class="navbar-brand fw-bold" href="{% url 'beauty_salon:index' %}">{{ request.session.settings_salon_name|default:'Beauty Salon' }}</a>
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Переключить навигацию">
       <span class="navbar-toggler-icon"></span>
@@ -34,10 +34,13 @@
             </li>
           {% elif request.session.user_role == 'admin' %}
             <li class="nav-item">
-              <a class="nav-link" href="{% url 'beauty_salon:users_list' %}">Пользователи</a>
+              <a class="nav-link" href="{% url 'beauty_salon:clients_list' %}">Клиенты</a>
             </li>
             <li class="nav-item">
               <a class="nav-link" href="{% url 'beauty_salon:appointments_list' %}">Записи</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'beauty_salon:admin_panel' %}">Панель администратора</a>
             </li>
           {% endif %}
         {% endif %}

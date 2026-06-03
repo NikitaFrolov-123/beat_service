@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+
+{% block title %}Записать клиента{% endblock %}
+
+{% block content %}
+<section class="py-5">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+          <div class="card-body p-4">
+            <h1 class="h3 mb-4">Записать клиента</h1>
+
+            <form method="post">
+              {% csrf_token %}
+
+              <div class="mb-3">
+                <label class="form-label">Имя клиента *</label>
+                <input type="text" name="client_name" class="form-control" required>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Телефон клиента *</label>
+                <input type="tel" name="client_phone" class="form-control" required placeholder="+7 (999) 000-00-00">
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Услуга *</label>
+                <select name="service_id" id="service-select" class="form-select" required>
+                  <option value="">Выберите услугу</option>
+                  {% for service in all_services %}
+                    <option value="{{ service.id }}">
+                      {{ service.name }} — {{ service.price }} ₽ ({{ service.duration_minutes }} мин.)
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Мастер *</label>
+                <select name="master_id" id="master-select" class="form-select" required>
+                  <option value="">Выберите мастера</option>
+                  {% for master in all_masters %}
+                    <option value="{{ master.id }}">
+                      {{ master.full_name }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Дата *</label>
+                <input type="date" name="date" id="date-input" class="form-control" required min="{% now 'Y-m-d' %}">
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Время *</label>
+                <select name="slot_time" id="time-select" class="form-select" required>
+                  <option value="">Сначала выберите дату</option>
+                </select>
+                <small class="text-muted">После выбора даты появятся свободные слоты</small>
+              </div>
+
+              <div class="mb-4">
+                <label class="form-label">Комментарий</label>
+                <textarea name="notes" class="form-control" rows="3"></textarea>
+              </div>
+
+              <div class="d-flex flex-column flex-sm-row gap-2 mt-4">
+                <button type="submit" class="btn btn-primary">Создать запись</button>
+                <a href="{% url 'beauty_salon:appointments_list' %}" class="btn btn-outline-secondary">Отмена</a>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const serviceSelect = document.getElementById('service-select');
+  const masterSelect = document.getElementById('master-select');
+  const dateInput = document.getElementById('date-input');
+  const timeSelect = document.getElementById('time-select');
+
+  function loadSlots() {
+    const date = dateInput.value;
+    const serviceId = serviceSelect.value;
+    const masterId = masterSelect.value;
+
+    if (!date || !serviceId || !masterId) {
+      timeSelect.innerHTML = '<option value="">Сначала выберите дату</option>';
+      return;
+    }
+
+    timeSelect.innerHTML = '<option value="">Загрузка...</option>';
+
+    fetch(`?service=${serviceId}&master=${masterId}&date=${date}&json_slots=1`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.slots && data.slots.length > 0) {
+          timeSelect.innerHTML = '<option value="">Выберите время</option>' +
+            data.slots.map(slot => `<option value="${slot}">${slot}</option>`).join('');
+        } else {
+          timeSelect.innerHTML = '<option value="">Нет свободных слотов</option>';
+        }
+      })
+      .catch(() => {
+        timeSelect.innerHTML = '<option value="">Ошибка загрузки времени</option>';
+      });
+  }
+
+  dateInput.addEventListener('change', loadSlots);
+  serviceSelect.addEventListener('change', loadSlots);
+  masterSelect.addEventListener('change', loadSlots);
+});
+</script>
+{% endblock %}

@@ -1,6 +1,55 @@
-<footer class="footer mt-5 py-4">
-  <div class="container d-flex justify-content-between align-items-center">
-    <span>© 2026 Beauty Salon</span>
-    <span>Красота начинается здесь</span>
+<footer class="bg-dark text-white py-5">
+  <div class="container">
+    <div class="row g-4">
+      <div class="col-lg-4 col-md-6">
+        <h4 class="fw-bold mb-3">{{ site_settings.salon_name|default:'Beauty Salon' }}</h4>
+        <p class="text-light opacity-75 mb-0">
+          Премиальный салон красоты с профессиональными мастерами. Индивидуальный подход к каждому клиенту, качественные услуги и уютная атмосфера.
+        </p>
+      </div>
+
+      <div class="col-lg-2 col-md-6">
+        <h6 class="fw-bold mb-3">Навигация</h6>
+        <ul class="list-unstyled mb-0">
+          <li class="mb-2"><a href="{% url 'beauty_salon:index' %}" class="text-light text-decoration-none">Главная</a></li>
+          <li class="mb-2"><a href="{% url 'beauty_salon:services_list' %}" class="text-light text-decoration-none">Услуги</a></li>
+          <li class="mb-2"><a href="{% url 'beauty_salon:masters_list' %}" class="text-light text-decoration-none">Мастера</a></li>
+          <li class="mb-2"><a href="{% url 'beauty_salon:appointment_create' %}" class="text-light text-decoration-none">Записаться</a></li>
+        </ul>
+      </div>
+
+      <div class="col-lg-3 col-md-6">
+        <h6 class="fw-bold mb-3">Контакты</h6>
+        <ul class="list-unstyled mb-0 text-light opacity-75">
+          <li class="mb-2">📍 г. Москва, ул. Тверская, д. 15</li>
+          <li class="mb-2">📞 {{ site_settings.phone|default:'+7 (999) 123-45-67' }}</li>
+          <li class="mb-2">✉️ {{ site_settings.email|default:'info@beautysalon.ru' }}</li>
+          <li class="mb-0">🕒 {{ site_settings.work_start|default:9 }}:00 — {{ site_settings.work_end|default:20 }}:00</li>
+        </ul>
+      </div>
+
+      <div class="col-lg-3 col-md-6">
+        <h6 class="fw-bold mb-3">Мы в соцсетях</h6>
+        <div class="fs-4">
+          <a href="#" class="text-white me-3"><i class="bi bi-instagram"></i></a>
+          <a href="#" class="text-white me-3"><i class="bi bi-telegram"></i></a>
+          <a href="#" class="text-white"><i class="bi bi-whatsapp"></i></a>
+        </div>
+      </div>
+    </div>
+
+    <hr class="border-secondary my-4">
+
+    <div class="row align-items-center">
+      <div class="col-md-6">
+        <p class="mb-0 text-light opacity-75 small">
+          © {% now 'Y' %} {{ site_settings.salon_name|default:'Beauty Salon' }}. Все права защищены.
+        </p>
+      </div>
+      <div class="col-md-6 text-md-end">
+        <a href="{% url 'beauty_salon:review_create_salon' %}" class="text-light text-decoration-none small me-3">Оставить отзыв</a>
+        <a href="#" class="text-light text-decoration-none small">Политика конфиденциальности</a>
+      </div>
+    </div>
   </div>
 </footer>

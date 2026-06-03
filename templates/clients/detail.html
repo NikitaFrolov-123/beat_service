@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ client.full_name }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <h1 class="mb-4">Клиент: {{ client.full_name }}</h1>
+
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5 class="card-title">Информация о клиенте</h5>
+      <p><strong>Email:</strong> {{ client.email }}</p>
+      <p><strong>Телефон:</strong> {{ client.phone }}</p>
+      <p><strong>Дата регистрации:</strong> {{ client.created_at|date:"d.m.Y H:i" }}</p>
+    </div>
+  </div>
+
+  <h3 class="mb-3">История записей</h3>
+
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>№ Записи</th>
+        <th>Дата и время</th>
+        <th>Мастер</th>
+        <th>Услуги</th>
+        <th>Статус</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for appointment in appointments %}
+      <tr>
+        <td>#{{ appointment.appointment_id }}</td>
+        <td>{{ appointment.start_datetime|date:"d.m.Y H:i" }}</td>
+        <td>{{ appointment.master.full_name }}</td>
+        <td>
+          {% for service in appointment.services.all %}
+            {{ service.name }}{% if not forloop.last %}, {% endif %}
+          {% endfor %}
+        </td>
+        <td>
+          {% if appointment.status == 'new' %}
+            <span class="badge bg-primary">Новая</span>
+          {% elif appointment.status == 'completed' %}
+            <span class="badge bg-success">Завершена</span>
+          {% elif appointment.status == 'cancelled' %}
+            <span class="badge bg-danger">Отменена</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="5">Записей нет</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <a href="{% url 'beauty_salon:clients_list' %}" class="btn btn-secondary">Назад к клиентам</a>
+</div>
+{% endblock %}

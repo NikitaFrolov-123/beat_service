@@ -1,11 +1,20 @@
 from django.contrib import admin
 from django import forms
 from django.utils.html import format_html
+from django.urls import path
+from django.shortcuts import render
 
 from .models import (
     Role, User, RoleUser, ServiceCategory, Service, Appointment,
     AppointmentService, Payment, Review, Product, ProductUsage
 )
+
+
+def reports_view(request):
+    context = {
+        'title': 'Отчёты',
+    }
+    return render(request, 'admin/reports.html', context)
 
 
 @admin.register(Role)
@@ -99,6 +108,13 @@ class ServiceAdmin(admin.ModelAdmin):
             )
         }),
     )
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('reports/', self.admin_site.admin_view(reports_view), name='reports'),
+        ]
+        return custom_urls + urls
 
     def image_preview(self, obj):
         if obj and obj.image:

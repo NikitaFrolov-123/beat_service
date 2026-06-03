@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-<!-- test -->
+
 {% block title %}{{ master.full_name }}{% endblock %}
 
 {% block content %}
@@ -33,7 +33,7 @@
               Отзывов: {{ master.reviews_count|default:0 }}
             </p>
 
-            {% if request.session.user_role != 'master' %}
+            {% if request.session.user_role != 'master' and request.session.user_role != 'admin' %}
               <a href="{% url 'beauty_salon:appointment_create' %}?master={{ master.id }}" class="btn btn-dark mt-2">
                 Записаться к мастеру
               </a>

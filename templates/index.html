@@ -18,6 +18,10 @@
             <a href="{% url 'beauty_salon:master_schedule' %}" class="btn btn-dark btn-lg">
               Мое расписание
             </a>
+          {% elif request.session.user_role == 'admin' %}
+            <a href="{% url 'beauty_salon:admin_panel' %}" class="btn btn-dark btn-lg">
+              Панель администратора
+            </a>
           {% else %}
             <a href="{% url 'beauty_salon:services_list' %}" class="btn btn-dark btn-lg">
               Смотреть услуги

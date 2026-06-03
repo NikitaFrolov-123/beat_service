@@ -101,8 +101,18 @@ class Service(models.Model):
 
 class Appointment(models.Model):
     appointment_id = models.AutoField(primary_key=True)
-    client = models.ForeignKey(User, on_delete=models.PROTECT, related_name='client_appointments', db_column='client_id')
-    master = models.ForeignKey(User, on_delete=models.PROTECT, related_name='master_appointments', db_column='master_id')
+    client = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='client_appointments',
+        db_column='client_id'
+    )
+    master = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='master_appointments',
+        db_column='master_id'
+    )
     start_datetime = models.DateTimeField()
     end_datetime = models.DateTimeField()
     status = models.CharField(max_length=20)
@@ -121,8 +131,16 @@ class Appointment(models.Model):
 
 
 class AppointmentService(models.Model):
-    appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE, db_column='Appointments_appointment_id')
-    service = models.ForeignKey(Service, on_delete=models.CASCADE, db_column='Services_id')
+    appointment = models.ForeignKey(
+        Appointment,
+        on_delete=models.CASCADE,
+        db_column='Appointments_appointment_id'
+    )
+    service = models.ForeignKey(
+        Service,
+        on_delete=models.CASCADE,
+        db_column='Services_id'
+    )
 
     class Meta:
         db_table = 'appointments_services'
@@ -136,7 +154,12 @@ class AppointmentService(models.Model):
 
 class Payment(models.Model):
     payment_id = models.AutoField(primary_key=True)
-    appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE, related_name='payments', db_column='appointment_id')
+    appointment = models.ForeignKey(
+        Appointment,
+        on_delete=models.CASCADE,
+        related_name='payments',
+        db_column='appointment_id'
+    )
     payment_method = models.CharField(max_length=20)
     payment_date = models.DateTimeField()
     is_paid = models.BooleanField(default=False)
@@ -246,8 +269,18 @@ class Product(models.Model):
 
 class ProductUsage(models.Model):
     usage_id = models.AutoField(primary_key=True)
-    appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE, related_name='product_usages', db_column='appointment_id')
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='usages', db_column='product_id')
+    appointment = models.ForeignKey(
+        Appointment,
+        on_delete=models.CASCADE,
+        related_name='product_usages',
+        db_column='appointment_id'
+    )
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='usages',
+        db_column='product_id'
+    )
     quantity_used = models.DecimalField(max_digits=10, decimal_places=3)
     usage_date = models.DateField()
 
@@ -278,3 +311,19 @@ class Notification(models.Model):
 
     def __str__(self):
         return self.text
+
+
+class SiteSettings(models.Model):
+    salon_name = models.CharField(max_length=255, default='Beauty Salon')
+    phone = models.CharField(max_length=50, blank=True, default='')
+    email = models.EmailField(blank=True, default='')
+    work_start = models.PositiveSmallIntegerField(default=9)
+    work_end = models.PositiveSmallIntegerField(default=20)
+
+    class Meta:
+        db_table = 'site_settings'
+        verbose_name = 'Настройки сайта'
+        verbose_name_plural = 'Настройки сайта'
+
+    def __str__(self):
+        return self.salon_name

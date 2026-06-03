@@ -8,18 +8,53 @@ from django.http import HttpResponseForbidden
 from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
-from .forms import ReviewForm
-from .models import Review
+from django.db.models import Sum
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponseForbidden, JsonResponse
 
-from .models import Notification
+from .forms import ReviewForm
 from .models import (
-    Role, User, ServiceCategory, Service, Appointment, AppointmentService,
-    Review
+    Role, User, ServiceCategory, Service, Appointment, Payment,
+    AppointmentService, Review, Notification, SiteSettings
 )
 
 WORK_START = 9
 WORK_END = 20
 SLOT_STEP = 15
+
+
+def master_required(view_func):
+    @wraps(view_func)
+    def _wrapped(request, *args, **kwargs):
+        user_id = request.session.get('user_id')
+        user_role = request.session.get('user_role')
+
+        if not user_id:
+            messages.error(request, 'Нужно войти в аккаунт')
+            return redirect('accounts:login')
+
+        if user_role != 'master':
+            return HttpResponseForbidden('Доступ только для мастера')
+
+        return view_func(request, *args, **kwargs)
+    return _wrapped
+
+
+def admin_required(view_func):
+    @wraps(view_func)
+    def _wrapped(request, *args, **kwargs):
+        user_id = request.session.get('user_id')
+        user_role = request.session.get('user_role')
+
+        if not user_id:
+            messages.error(request, 'Нужно войти в аккаунт')
+            return redirect('accounts:login')
+
+        if user_role != 'admin':
+            return HttpResponseForbidden('Доступ только для администратора')
+
+        return view_func(request, *args, **kwargs)
+    return _wrapped
 
 
 def index(request):
@@ -35,7 +70,7 @@ def index(request):
     services = Service.objects.select_related('category').prefetch_related('masters').filter(is_active=True)[:6]
     masters = User.objects.filter(role__name='master').annotate(
         avg_rating=Avg('master_reviews__rating', filter=Q(master_reviews__status='approved')),
-        reviews_count=Count('master_reviews', filter=Q(master_reviews__status='approved'))
+        reviews_count=Count('master_reviews', filter=Q(master_reviews__status='approved'), distinct=True)
     )[:6]
 
     salon_reviews = Review.objects.select_related('client').filter(
@@ -52,6 +87,7 @@ def index(request):
     })
 
 
+@admin_required
 def users_list(request):
     query = request.GET.get('q', '')
     users = User.objects.select_related('role').filter(
@@ -67,6 +103,7 @@ def users_list(request):
     })
 
 
+@admin_required
 @require_http_methods(["GET", "POST"])
 def user_create(request):
     if request.method == 'POST':
@@ -87,6 +124,7 @@ def user_create(request):
     return render(request, 'users/create.html', {'roles': roles})
 
 
+@admin_required
 @require_http_methods(["GET", "POST"])
 def user_update(request, user_id):
     user = get_object_or_404(User, id=user_id)
@@ -108,6 +146,7 @@ def user_update(request, user_id):
     return render(request, 'users/update.html', {'user': user, 'roles': roles})
 
 
+@admin_required
 def user_delete(request, user_id):
     user = get_object_or_404(User, id=user_id)
     if request.method == 'POST':
@@ -120,11 +159,74 @@ def user_delete(request, user_id):
     return render(request, 'users/delete.html', {'user': user})
 
 
+@admin_required
+def admin_panel(request):
+    return render(request, 'admin/panel.html')
+
+
+@admin_required
+def reports_view(request):
+    now = timezone.localtime(timezone.now())
+    today = now.date()
+
+    start_of_day = timezone.make_aware(datetime.combine(today, time.min))
+    end_of_day = start_of_day + timedelta(days=1)
+
+    start_of_month = timezone.make_aware(datetime.combine(today.replace(day=1), time.min))
+    if today.month == 12:
+        next_month_date = today.replace(year=today.year + 1, month=1, day=1)
+    else:
+        next_month_date = today.replace(month=today.month + 1, day=1)
+    end_of_month = timezone.make_aware(datetime.combine(next_month_date, time.min))
+
+    today_appointments = Appointment.objects.filter(
+        start_datetime__gte=start_of_day,
+        start_datetime__lt=end_of_day
+    ).count()
+
+    month_appointments = Appointment.objects.filter(
+        start_datetime__gte=start_of_month,
+        start_datetime__lt=end_of_month
+    ).count()
+
+    today_appointments_completed = Appointment.objects.filter(
+        status='completed',
+        start_datetime__gte=start_of_day,
+        start_datetime__lt=end_of_day
+    ).prefetch_related('services')
+
+    month_appointments_completed = Appointment.objects.filter(
+        status='completed',
+        start_datetime__gte=start_of_month,
+        start_datetime__lt=end_of_month
+    ).prefetch_related('services')
+
+    today_revenue = sum(
+        service.price
+        for appointment in today_appointments_completed
+        for service in appointment.services.all()
+    )
+
+    month_revenue = sum(
+        service.price
+        for appointment in month_appointments_completed
+        for service in appointment.services.all()
+    )
+
+    return render(request, 'admin/reports.html', {
+        'title': 'Отчёты',
+        'today_appointments': today_appointments,
+        'month_appointments': month_appointments,
+        'today_revenue': today_revenue,
+        'month_revenue': month_revenue,
+    })
+
+
 def services_list(request):
     categories = ServiceCategory.objects.all().order_by('name')
     category_id = request.GET.get('category')
 
-    services = Service.objects.select_related('category').prefetch_related('masters').filter(is_active=True)
+    services = Service.objects.select_related('category').prefetch_related('masters').all()
     current_category = None
 
     if category_id:
@@ -141,8 +243,7 @@ def services_list(request):
 def service_detail(request, service_id):
     service = get_object_or_404(
         Service.objects.select_related('category').prefetch_related('masters'),
-        id=service_id,
-        is_active=True
+        id=service_id
     )
     masters = service.masters.all()
 
@@ -152,6 +253,7 @@ def service_detail(request, service_id):
     })
 
 
+@admin_required
 @require_http_methods(["GET", "POST"])
 def service_create(request):
     if request.method == 'POST':
@@ -180,6 +282,7 @@ def service_create(request):
     })
 
 
+@admin_required
 @require_http_methods(["GET", "POST"])
 def service_update(request, service_id):
     service = get_object_or_404(Service, id=service_id)
@@ -211,6 +314,7 @@ def service_update(request, service_id):
     })
 
 
+@admin_required
 def service_delete(request, service_id):
     service = get_object_or_404(Service, id=service_id)
     if request.method == 'POST':
@@ -220,6 +324,7 @@ def service_delete(request, service_id):
     return render(request, 'services/delete.html', {'service': service})
 
 
+@admin_required
 def appointments_list(request):
     status = request.GET.get('status')
     date_from = request.GET.get('date_from')
@@ -232,11 +337,18 @@ def appointments_list(request):
     if date_from:
         qs = qs.filter(start_datetime__date__gte=date_from)
 
-    paginator = Paginator(qs, 25)
-    page = request.GET.get('page')
+    grouped = {}
+    for appointment in qs:
+        d = appointment.start_datetime.date()
+        grouped.setdefault(d, []).append(appointment)
+
+    grouped_appointments = [
+        {'date': date, 'appointments': appointments}
+        for date, appointments in sorted(grouped.items(), reverse=True)
+    ]
 
     return render(request, 'appointments/list.html', {
-        'appointments': paginator.get_page(page),
+        'grouped_appointments': grouped_appointments,
         'masters': masters,
         'status_filter': status,
         'date_from': date_from,
@@ -244,8 +356,8 @@ def appointments_list(request):
 
 
 def get_free_slots(master, service_duration, selected_date):
-    day_start = datetime.combine(selected_date, time(hour=WORK_START, minute=0))
-    day_end = datetime.combine(selected_date, time(hour=WORK_END, minute=0))
+    day_start = timezone.make_aware(datetime.combine(selected_date, time(hour=WORK_START, minute=0)))
+    day_end = timezone.make_aware(datetime.combine(selected_date, time(hour=WORK_END, minute=0)))
 
     appointments = Appointment.objects.filter(
         master=master,
@@ -298,6 +410,7 @@ def my_appointments_view(request):
         'appointments': appointments,
     })
 
+
 @require_http_methods(["GET", "POST"])
 def appointment_create(request):
     if request.session.get('user_role') == 'master':
@@ -315,36 +428,25 @@ def appointment_create(request):
     selected_master = request.GET.get('master')
     selected_date = request.GET.get('date')
 
-    free_slots = []
-    service_obj = None
-    master_obj = None
+    masters_qs = User.objects.filter(role__name='master').order_by('full_name')
+    services_qs = Service.objects.filter(is_active=True).order_by('name')
 
-    masters_qs = (
-        User.objects.filter(role__name='master')
-        .prefetch_related('services')
-        .order_by('full_name')
-    )
-    services_qs = (
-        Service.objects.select_related('category')
-        .prefetch_related('masters')
-        .filter(is_active=True)
-        .order_by('name')
-    )
-
-    if selected_service:
-        service_obj = get_object_or_404(Service, id=selected_service, is_active=True)
-        masters_qs = masters_qs.filter(services__id=selected_service).distinct()
-
-    if selected_master:
-        master_obj = get_object_or_404(User, id=selected_master, role__name='master')
-        services_qs = services_qs.filter(masters=master_obj)
-
-    if selected_date and service_obj and master_obj:
+    if request.GET.get('json_slots'):
         try:
-            parsed_date = datetime.strptime(selected_date, '%Y-%m-%d').date()
-            free_slots = get_free_slots(master_obj, service_obj.duration_minutes, parsed_date)
-        except ValueError:
-            free_slots = []
+            service_id = request.GET.get('service')
+            master_id = request.GET.get('master')
+            date_str = request.GET.get('date')
+
+            if not all([service_id, master_id, date_str]):
+                return JsonResponse({'slots': []})
+
+            service = get_object_or_404(Service, id=service_id, is_active=True)
+            master = get_object_or_404(User, id=master_id, role__name='master')
+            parsed_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            slots = get_free_slots(master, service.duration_minutes, parsed_date)
+            return JsonResponse({'slots': slots})
+        except Exception:
+            return JsonResponse({'slots': []})
 
     if request.method == 'POST':
         try:
@@ -356,26 +458,27 @@ def appointment_create(request):
 
             if not all([service_id, master_id, selected_date, selected_time]):
                 messages.error(request, 'Заполните все поля и выберите свободное время')
-                return redirect(f"{request.path}?service={service_id or ''}&master={master_id or ''}&date={selected_date or ''}")
+                return redirect('beauty_salon:appointment_create')
 
             service = get_object_or_404(Service, id=service_id, is_active=True)
             master = get_object_or_404(User, id=master_id, role__name='master')
 
             if not service.masters.filter(id=master.id).exists():
                 messages.error(request, 'Этот мастер не оказывает выбранную услугу')
-                return redirect(f"{request.path}?service={service_id}&master={master_id}&date={selected_date}")
+                return redirect('beauty_salon:appointment_create')
 
             parsed_date = datetime.strptime(selected_date, '%Y-%m-%d').date()
             parsed_time = datetime.strptime(selected_time, '%H:%M').time()
-            start_dt = datetime.combine(parsed_date, parsed_time)
+
+            start_dt = timezone.make_aware(datetime.combine(parsed_date, parsed_time))
             end_dt = start_dt + timedelta(minutes=service.duration_minutes)
 
-            work_start_dt = datetime.combine(parsed_date, time(hour=WORK_START, minute=0))
-            work_end_dt = datetime.combine(parsed_date, time(hour=WORK_END, minute=0))
+            work_start_dt = timezone.make_aware(datetime.combine(parsed_date, time(hour=WORK_START, minute=0)))
+            work_end_dt = timezone.make_aware(datetime.combine(parsed_date, time(hour=WORK_END, minute=0)))
 
             if start_dt < work_start_dt or end_dt > work_end_dt:
                 messages.error(request, 'Время вне рабочего графика')
-                return redirect(f"{request.path}?service={service_id}&master={master_id}&date={selected_date}")
+                return redirect('beauty_salon:appointment_create')
 
             conflict = Appointment.objects.filter(
                 master=master,
@@ -385,11 +488,7 @@ def appointment_create(request):
 
             if conflict:
                 messages.error(request, 'Это время уже занято')
-                return redirect(f"{request.path}?service={service_id}&master={master_id}&date={selected_date}")
-
-            if selected_time not in get_free_slots(master, service.duration_minutes, parsed_date):
-                messages.error(request, 'Выбранное время уже недоступно')
-                return redirect(f"{request.path}?service={service_id}&master={master_id}&date={selected_date}")
+                return redirect('beauty_salon:appointment_create')
 
             appointment = Appointment.objects.create(
                 client=client,
@@ -431,7 +530,6 @@ def appointment_create(request):
         'selected_service': selected_service,
         'selected_master': selected_master,
         'selected_date': selected_date,
-        'free_slots': free_slots,
     })
 
 
@@ -500,9 +598,9 @@ def masters_list(request):
     masters = User.objects.filter(
         role__name='master'
     ).annotate(
-        appointments_count=Count('master_appointments'),
+        appointments_count=Count('master_appointments', distinct=True),
         avg_rating=Avg('master_reviews__rating', filter=Q(master_reviews__status='approved')),
-        reviews_count=Count('master_reviews', filter=Q(master_reviews__status='approved'))
+        reviews_count=Count('master_reviews', filter=Q(master_reviews__status='approved'), distinct=True)
     ).prefetch_related('services').order_by('full_name')
 
     return render(request, 'masters/list.html', {'masters': masters})
@@ -512,7 +610,7 @@ def master_detail(request, user_id):
     master = get_object_or_404(
         User.objects.prefetch_related('services').annotate(
             avg_rating=Avg('master_reviews__rating', filter=Q(master_reviews__status='approved')),
-            reviews_count=Count('master_reviews', filter=Q(master_reviews__status='approved'))
+            reviews_count=Count('master_reviews', filter=Q(master_reviews__status='approved'), distinct=True)
         ),
         id=user_id,
         role__name='master'
@@ -530,6 +628,7 @@ def master_detail(request, user_id):
     })
 
 
+@require_http_methods(["GET"])
 def notifications_list(request):
     user_id = request.session.get('user_id')
     if not user_id:
@@ -542,23 +641,6 @@ def notifications_list(request):
     return render(request, 'notifications/list.html', {
         'notifications': notifications
     })
-
-
-def master_required(view_func):
-    @wraps(view_func)
-    def _wrapped(request, *args, **kwargs):
-        user_id = request.session.get('user_id')
-        user_role = request.session.get('user_role')
-
-        if not user_id:
-            messages.error(request, 'Нужно войти в аккаунт')
-            return redirect('accounts:login')
-
-        if user_role != 'master':
-            return HttpResponseForbidden('Доступ только для мастера')
-
-        return view_func(request, *args, **kwargs)
-    return _wrapped
 
 
 @master_required
@@ -598,12 +680,8 @@ def appointment_complete(request, pk):
         messages.error(request, 'Нельзя завершить отменённую запись')
         return redirect('beauty_salon:master_schedule')
 
-    if appointment.status == 'completed':
-        messages.info(request, 'Запись уже завершена')
-        return redirect('beauty_salon:master_schedule')
-
     if appointment.start_datetime > timezone.now():
-        messages.error(request, 'Эту запись пока нельзя отметить как выполненную')
+        messages.error(request, 'Эту запись пока нельзя отметить как выполненной')
         return redirect('beauty_salon:master_schedule')
 
     appointment.status = 'completed'
@@ -634,7 +712,7 @@ def appointment_cancel_by_master(request, pk):
 
     appointment.status = 'cancelled'
     if reason:
-        appointment.notes = (appointment.notes or '') + f'\n[Отмена мастером] {reason}'
+        appointment.notes = (appointment.notes or '') + f'\\n[Отмена мастером] {reason}'
     appointment.save()
 
     Notification.objects.create(
@@ -662,6 +740,7 @@ def appointment_receipt(request, pk):
         'appointment': appointment,
         'total_price': total_price,
     })
+
 
 @require_http_methods(["GET", "POST"])
 def review_create(request, appointment_id):
@@ -708,6 +787,7 @@ def review_create(request, appointment_id):
         'appointment': appointment,
     })
 
+
 @require_http_methods(["GET", "POST"])
 def review_create_salon(request):
     user_id = request.session.get('user_id')
@@ -734,4 +814,221 @@ def review_create_salon(request):
     return render(request, 'reviews/create.html', {
         'form': form,
         'review_type': Review.REVIEW_TYPE_SALON,
+    })
+
+
+@admin_required
+def clients_list(request):
+    query = request.GET.get('q', '')
+
+    clients = User.objects.select_related('role').prefetch_related(
+        'client_appointments__services'
+    ).filter(
+        role__name='client'
+    )
+
+    if query:
+        clients = clients.filter(
+            Q(email__icontains=query) |
+            Q(full_name__icontains=query) |
+            Q(phone__icontains=query)
+        )
+
+    clients = clients.order_by('-created_at')
+
+    paginator = Paginator(clients, 20)
+    page = request.GET.get('page')
+
+    return render(request, 'clients/list.html', {
+        'clients': paginator.get_page(page),
+        'query': query,
+    })
+
+
+@admin_required
+def client_detail(request, user_id):
+    client = get_object_or_404(
+        User.objects.select_related('role').prefetch_related(
+            'client_appointments__services',
+            'reviews_written'
+        ),
+        id=user_id,
+        role__name='client'
+    )
+
+    appointments = client.client_appointments.select_related('master').order_by('-start_datetime')
+
+    return render(request, 'clients/detail.html', {
+        'client': client,
+        'appointments': appointments,
+    })
+
+
+@admin_required
+@require_http_methods(["GET", "POST"])
+def appointment_create_by_admin(request):
+    if request.method == 'POST':
+        try:
+            service_id = request.POST.get('service_id')
+            master_id = request.POST.get('master_id')
+            client_phone = request.POST.get('client_phone')
+            client_name = request.POST.get('client_name')
+            selected_date = request.POST.get('date')
+            selected_time = request.POST.get('slot_time')
+            notes = request.POST.get('notes', '')
+
+            if not all([service_id, master_id, client_phone, client_name, selected_date, selected_time]):
+                messages.error(request, 'Заполните все поля')
+                return redirect(request.path)
+
+            client, created = User.objects.get_or_create(
+                phone=client_phone,
+                defaults={
+                    'email': f'{client_phone}@client.local',
+                    'full_name': client_name,
+                    'role_id': Role.objects.get(name='client').id
+                }
+            )
+
+            if created:
+                messages.info(request, f'Клиент {client_name} создан')
+
+            service = get_object_or_404(Service, id=service_id, is_active=True)
+            master = get_object_or_404(User, id=master_id, role__name='master')
+
+            if not service.masters.filter(id=master.id).exists():
+                messages.error(request, 'Этот мастер не оказывает выбранную услугу')
+                return redirect(request.path)
+
+            parsed_date = datetime.strptime(selected_date, '%Y-%m-%d').date()
+            parsed_time = datetime.strptime(selected_time, '%H:%M').time()
+
+            start_dt = timezone.make_aware(datetime.combine(parsed_date, parsed_time))
+            end_dt = start_dt + timedelta(minutes=service.duration_minutes)
+
+            conflict = Appointment.objects.filter(
+                master=master,
+                start_datetime__lt=end_dt,
+                end_datetime__gt=start_dt
+            ).exists()
+
+            if conflict:
+                messages.error(request, 'Это время уже занято')
+                return redirect(request.path)
+
+            appointment = Appointment.objects.create(
+                client=client,
+                master=master,
+                start_datetime=start_dt,
+                end_datetime=end_dt,
+                status='new',
+                notes=notes
+            )
+
+            AppointmentService.objects.create(
+                appointment=appointment,
+                service=service
+            )
+
+            appointment_date = parsed_date.strftime('%d.%m.%Y')
+
+            Notification.objects.create(
+                recipient=client,
+                text=f'Вы записаны на {service.name} к мастеру {master.full_name} на {appointment_date} в {selected_time}.'
+            )
+
+            Notification.objects.create(
+                recipient=master,
+                text=f'Новая запись: {client.full_name}, услуга {service.name}, {appointment_date} в {selected_time}.'
+            )
+
+            messages.success(request, f'Запись #{appointment.appointment_id} создана')
+            return redirect('beauty_salon:appointments_list')
+
+        except Exception as e:
+            messages.error(request, f'Ошибка: {e}')
+
+    selected_service_id = request.GET.get('service')
+    selected_master_id = request.GET.get('master')
+    selected_date = request.GET.get('date')
+
+    all_masters = User.objects.filter(role__name='master').order_by('full_name')
+    all_services = Service.objects.filter(is_active=True).order_by('name')
+
+    if selected_master_id:
+        all_services = Service.objects.filter(masters__id=selected_master_id, is_active=True).order_by('name')
+
+    if selected_service_id:
+        all_masters = User.objects.filter(role__name='master', services__id=selected_service_id).order_by('full_name').distinct()
+
+    if request.GET.get('json_slots'):
+        try:
+            if not all([selected_service_id, selected_master_id, selected_date]):
+                return JsonResponse({'slots': []})
+
+            service = get_object_or_404(Service, id=selected_service_id, is_active=True)
+            master = get_object_or_404(User, id=selected_master_id, role__name='master')
+            parsed_date = datetime.strptime(selected_date, '%Y-%m-%d').date()
+            slots = get_free_slots(master, service.duration_minutes, parsed_date)
+            return JsonResponse({'slots': slots})
+        except Exception:
+            return JsonResponse({'slots': []})
+
+    return render(request, 'appointments/create_by_admin.html', {
+        'all_masters': all_masters,
+        'all_services': all_services,
+        'selected_service_id': selected_service_id,
+        'selected_master_id': selected_master_id,
+    })
+
+
+@admin_required
+def get_filters_json(request):
+    service_id = request.GET.get('service')
+    master_id = request.GET.get('master')
+
+    if service_id:
+        masters = User.objects.filter(role__name='master', services__id=service_id).distinct()
+        master_ids = list(masters.values_list('id', flat=True))
+        return JsonResponse({'master_ids': master_ids})
+
+    if master_id:
+        services = Service.objects.filter(masters__id=master_id, is_active=True)
+        service_ids = list(services.values_list('id', flat=True))
+        return JsonResponse({'service_ids': service_ids})
+
+    return JsonResponse({'master_ids': [], 'service_ids': []})
+
+
+@admin_required
+@require_http_methods(["GET", "POST"])
+def admin_settings(request):
+    settings_obj, created = SiteSettings.objects.get_or_create(pk=1)
+
+    if request.method == 'POST':
+        try:
+            settings_obj.salon_name = request.POST.get('salon_name', 'Beauty Salon')
+            settings_obj.phone = request.POST.get('phone', '')
+            settings_obj.email = request.POST.get('email', '')
+            settings_obj.work_start = int(request.POST.get('work_start', 9))
+            settings_obj.work_end = int(request.POST.get('work_end', 20))
+            settings_obj.save()
+
+            messages.success(request, 'Настройки сохранены')
+            return redirect('beauty_salon:admin_settings')
+        except Exception as e:
+            messages.error(request, f'Ошибка при сохранении: {e}')
+
+    total_users = User.objects.count()
+    total_appointments = Appointment.objects.count()
+    total_services = Service.objects.count()
+    total_masters = User.objects.filter(role__name='master').count()
+
+    return render(request, 'admin/settings.html', {
+        'title': 'Настройки',
+        'settings_obj': settings_obj,
+        'total_users': total_users,
+        'total_appointments': total_appointments,
+        'total_services': total_services,
+        'total_masters': total_masters,
     })

@@ -23,7 +23,7 @@
           <p class="subtitle mb-2">Услуга</p>
           <h1 class="mb-3">{{ service.name }}</h1>
 
-          <p class="lead">{{ service.description }}</p>
+          <p class="lead">{{ service.description|default:"Описание отсутствует" }}</p>
 
           <div class="price-large mb-4">{{ service.price }} ₽</div>
 
@@ -41,11 +41,20 @@
             {% endfor %}
           </div>
 
-          {% if request.session.user_role != 'master' %}
-            <a href="{% url 'beauty_salon:appointment_create' %}?service={{ service.id }}" class="btn btn-dark btn-lg">
-              Записаться на услугу
-            </a>
-          {% endif %}
+          <div class="d-flex flex-wrap gap-2">
+            {% if request.session.user_role == 'admin' %}
+              <a href="{% url 'beauty_salon:service_update' service.id %}" class="btn btn-warning btn-lg">
+                Изменить
+              </a>
+              <a href="{% url 'beauty_salon:service_delete' service.id %}" class="btn btn-danger btn-lg">
+                Удалить
+              </a>
+            {% elif request.session.user_role != 'master' %}
+              <a href="{% url 'beauty_salon:appointment_create' %}?service={{ service.id }}" class="btn btn-dark btn-lg">
+                Записаться на услугу
+              </a>
+            {% endif %}
+          </div>
         </div>
       </div>
     </div>

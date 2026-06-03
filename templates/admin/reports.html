@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block title %}Отчёты{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <h1 class="mb-4">Отчёты</h1>
+
+  <div class="row g-4">
+    <div class="col-md-3">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h5 class="card-title">Записи за день</h5>
+          {% if today_appointments > 0 %}
+            <p class="display-6 mb-0">{{ today_appointments }}</p>
+          {% else %}
+            <p class="text-muted mb-0">Нет записей за день</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h5 class="card-title">Записи за месяц</h5>
+          {% if month_appointments > 0 %}
+            <p class="display-6 mb-0">{{ month_appointments }}</p>
+          {% else %}
+            <p class="text-muted mb-0">Нет записей за месяц</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h5 class="card-title">Выручка за день</h5>
+          {% if today_revenue > 0 %}
+            <p class="display-6 mb-0">{{ today_revenue }} ₽</p>
+          {% else %}
+            <p class="text-muted mb-0">Нет оплат за период</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h5 class="card-title">Выручка за месяц</h5>
+          {% if month_revenue > 0 %}
+            <p class="display-6 mb-0">{{ month_revenue }} ₽</p>
+          {% else %}
+            <p class="text-muted mb-0">Нет оплат за период</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

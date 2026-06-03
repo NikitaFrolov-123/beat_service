@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <h1 class="mb-4">{{ title }}</h1>
+
+  <form method="post">
+    {% csrf_token %}
+
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0">Основные параметры салона</h5>
+      </div>
+      <div class="card-body">
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <label for="salon_name" class="form-label">Название салона *</label>
+            <input type="text" class="form-control" id="salon_name" name="salon_name" value="{{ salon_name }}" required>
+          </div>
+
+          <div class="col-md-6">
+            <label for="email" class="form-label">Email для связи</label>
+            <input type="email" class="form-control" id="email" name="email" value="{{ email }}">
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label for="phone" class="form-label">Телефон для связи</label>
+          <input type="tel" class="form-control" id="phone" name="phone" value="{{ phone }}">
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0">Рабочее время</h5>
+      </div>
+      <div class="card-body">
+        <div class="row mb-3">
+          <div class="col-md-4">
+            <label for="work_start" class="form-label">Начало рабочего дня (час)</label>
+            <input type="number" class="form-control" id="work_start" name="work_start" value="{{ work_start }}" min="0" max="23">
+            <small class="text-muted">По умолчанию: 9</small>
+          </div>
+
+          <div class="col-md-4">
+            <label for="work_end" class="form-label">Конец рабочего дня (час)</label>
+            <input type="number" class="form-control" id="work_end" name="work_end" value="{{ work_end }}" min="1" max="24">
+            <small class="text-muted">По умолчанию: 20</small>
+          </div>
+
+          <div class="col-md-4">
+            <label for="slot_step" class="form-label">Шаг записи (минут)</label>
+            <input type="number" class="form-control" id="slot_step" name="slot_step" value="{{ slot_step }}" min="5" step="5">
+            <small class="text-muted">По умолчанию: 15</small>
+          </div>
+        </div>
+
+        <p class="text-muted mb-0">
+          Эти параметры влияют на генерацию свободных слотов для записи клиентов.
+        </p>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0">Служебные данные</h5>
+      </div>
+      <div class="card-body">
+        <p><strong>Всего пользователей:</strong> {{ total_users|default:"Загрузка..." }}</p>
+        <p><strong>Всего записей:</strong> {{ total_appointments|default:"Загрузка..." }}</p>
+        <p><strong>Всего услуг:</strong> {{ total_services|default:"Загрузка..." }}</p>
+        <p><strong>Всего мастеров:</strong> {{ total_masters|default:"Загрузка..." }}</p>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-lg">Сохранить настройки</button>
+    <a href="{% url 'beauty_salon:admin_panel' %}" class="btn btn-secondary btn-lg">Назад к панели</a>
+  </form>
+</div>
+{% endblock %}
