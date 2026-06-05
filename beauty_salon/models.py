@@ -151,29 +151,6 @@ class AppointmentService(models.Model):
     def __str__(self):
         return f'{self.appointment} - {self.service}'
 
-
-class Payment(models.Model):
-    payment_id = models.AutoField(primary_key=True)
-    appointment = models.ForeignKey(
-        Appointment,
-        on_delete=models.CASCADE,
-        related_name='payments',
-        db_column='appointment_id'
-    )
-    payment_method = models.CharField(max_length=20)
-    payment_date = models.DateTimeField()
-    is_paid = models.BooleanField(default=False)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-
-    class Meta:
-        db_table = 'payments'
-        verbose_name = 'Платёж'
-        verbose_name_plural = 'Платежи'
-
-    def __str__(self):
-        return f'{self.payment_id} - {self.amount}'
-
-
 class Review(models.Model):
     REVIEW_TYPE_MASTER = 'master'
     REVIEW_TYPE_SALON = 'salon'
@@ -246,52 +223,6 @@ class Review(models.Model):
     def save(self, *args, **kwargs):
         self.is_visible = self.status == self.STATUS_APPROVED
         super().save(*args, **kwargs)
-
-
-class Product(models.Model):
-    product_id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=200)
-    category = models.CharField(max_length=100)
-    purchase_price = models.DecimalField(max_digits=10, decimal_places=2)
-    retail_price = models.DecimalField(max_digits=10, decimal_places=2)
-    quantity = models.PositiveIntegerField()
-    min_quantity = models.PositiveIntegerField()
-    unit = models.CharField(max_length=20)
-
-    class Meta:
-        db_table = 'products'
-        verbose_name = 'Товар'
-        verbose_name_plural = 'Товары'
-
-    def __str__(self):
-        return self.name
-
-
-class ProductUsage(models.Model):
-    usage_id = models.AutoField(primary_key=True)
-    appointment = models.ForeignKey(
-        Appointment,
-        on_delete=models.CASCADE,
-        related_name='product_usages',
-        db_column='appointment_id'
-    )
-    product = models.ForeignKey(
-        Product,
-        on_delete=models.CASCADE,
-        related_name='usages',
-        db_column='product_id'
-    )
-    quantity_used = models.DecimalField(max_digits=10, decimal_places=3)
-    usage_date = models.DateField()
-
-    class Meta:
-        db_table = 'product_usage'
-        verbose_name = 'Использование товара'
-        verbose_name_plural = 'Использование товаров'
-
-    def __str__(self):
-        return f'{self.product} - {self.quantity_used}'
-
 
 class Notification(models.Model):
     recipient = models.ForeignKey(

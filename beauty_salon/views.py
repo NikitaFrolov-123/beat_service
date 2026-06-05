@@ -14,7 +14,7 @@ from django.http import HttpResponseForbidden, JsonResponse
 
 from .forms import ReviewForm
 from .models import (
-    Role, User, ServiceCategory, Service, Appointment, Payment,
+    Role, User, ServiceCategory, Service, Appointment,
     AppointmentService, Review, Notification, SiteSettings
 )
 

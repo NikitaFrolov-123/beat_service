@@ -6,7 +6,7 @@ from django.shortcuts import render
 
 from .models import (
     Role, User, RoleUser, ServiceCategory, Service, Appointment,
-    AppointmentService, Payment, Review, Product, ProductUsage
+    AppointmentService, Review
 )
 
 
@@ -142,15 +142,6 @@ class AppointmentServiceAdmin(admin.ModelAdmin):
     list_filter = ('service',)
     ordering = ('appointment',)
 
-
-@admin.register(Payment)
-class PaymentAdmin(admin.ModelAdmin):
-    list_display = ('payment_id', 'appointment', 'payment_method', 'payment_date', 'is_paid', 'amount')
-    search_fields = ('appointment__client__full_name', 'payment_method')
-    list_filter = ('payment_method', 'is_paid', 'payment_date')
-    ordering = ('-payment_date',)
-
-
 @admin.action(description='Опубликовать выбранные отзывы')
 def approve_reviews(modeladmin, request, queryset):
     queryset.update(status=Review.STATUS_APPROVED, is_visible=True)
@@ -217,19 +208,3 @@ class ReviewAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
-
-
-@admin.register(Product)
-class ProductAdmin(admin.ModelAdmin):
-    list_display = ('product_id', 'name', 'category', 'quantity', 'min_quantity', 'purchase_price', 'retail_price', 'unit')
-    search_fields = ('name', 'category', 'unit')
-    list_filter = ('category', 'unit')
-    ordering = ('name',)
-
-
-@admin.register(ProductUsage)
-class ProductUsageAdmin(admin.ModelAdmin):
-    list_display = ('usage_id', 'appointment', 'product', 'quantity_used', 'usage_date')
-    search_fields = ('product__name', 'appointment__client__full_name')
-    list_filter = ('usage_date', 'product')
-    ordering = ('-usage_date',)

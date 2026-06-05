@@ -29,24 +29,6 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.CreateModel(
-            name='Product',
-            fields=[
-                ('product_id', models.AutoField(primary_key=True, serialize=False)),
-                ('name', models.CharField(max_length=200)),
-                ('category', models.CharField(max_length=100)),
-                ('purchase_price', models.DecimalField(decimal_places=2, max_digits=10)),
-                ('retail_price', models.DecimalField(decimal_places=2, max_digits=10)),
-                ('quantity', models.PositiveIntegerField()),
-                ('min_quantity', models.PositiveIntegerField()),
-                ('unit', models.CharField(max_length=20)),
-            ],
-            options={
-                'verbose_name': 'Товар',
-                'verbose_name_plural': 'Товары',
-                'db_table': 'products',
-            },
-        ),
-        migrations.CreateModel(
             name='Role',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -84,37 +66,6 @@ class Migration(migrations.Migration):
                 'verbose_name': 'Категория услуги',
                 'verbose_name_plural': 'Категории услуг',
                 'db_table': 'service_categories',
-            },
-        ),
-        migrations.CreateModel(
-            name='Payment',
-            fields=[
-                ('payment_id', models.AutoField(primary_key=True, serialize=False)),
-                ('payment_method', models.CharField(max_length=20)),
-                ('payment_date', models.DateTimeField()),
-                ('is_paid', models.BooleanField(default=False)),
-                ('amount', models.DecimalField(decimal_places=2, max_digits=10)),
-                ('appointment', models.ForeignKey(db_column='appointment_id', on_delete=django.db.models.deletion.CASCADE, related_name='payments', to='beauty_salon.appointment')),
-            ],
-            options={
-                'verbose_name': 'Платёж',
-                'verbose_name_plural': 'Платежи',
-                'db_table': 'payments',
-            },
-        ),
-        migrations.CreateModel(
-            name='ProductUsage',
-            fields=[
-                ('usage_id', models.AutoField(primary_key=True, serialize=False)),
-                ('quantity_used', models.DecimalField(decimal_places=3, max_digits=10)),
-                ('usage_date', models.DateField()),
-                ('appointment', models.ForeignKey(db_column='appointment_id', on_delete=django.db.models.deletion.CASCADE, related_name='product_usages', to='beauty_salon.appointment')),
-                ('product', models.ForeignKey(db_column='product_id', on_delete=django.db.models.deletion.CASCADE, related_name='usages', to='beauty_salon.product')),
-            ],
-            options={
-                'verbose_name': 'Использование товара',
-                'verbose_name_plural': 'Использование товаров',
-                'db_table': 'product_usage',
             },
         ),
         migrations.CreateModel(
